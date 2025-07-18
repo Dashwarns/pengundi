@@ -7,7 +7,7 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #1a1a1a; /* Dominan Hitam */
+            background-color: #1a1a1a;
             color: #ffffff;
             display: flex;
             flex-direction: column;
@@ -28,7 +28,7 @@
             width: 100%;
         }
         h1 {
-            color: #9370DB; /* Ungu */
+            color: #9370DB;
             margin-bottom: 30px;
             font-size: 2.5em;
         }
@@ -49,7 +49,7 @@
             font-size: 1em;
         }
         button {
-            background-color: #9370DB; /* Ungu */
+            background-color: #9370DB;
             color: white;
             padding: 12px 25px;
             border: none;
@@ -99,7 +99,7 @@
         }
         #message {
             margin-top: 20px;
-            color: #4CAF50; /* Hijau untuk sukses */
+            color: #4CAF50;
         }
     </style>
 </head>
@@ -116,8 +116,8 @@
     </div>
 
     <script>
-        // GANTI DENGAN URL APLIKASI WEB GOOGLE APPS SCRIPT ANDA
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxjW8jDpAczBX2yLEb-FiRLPhMZ6qWw_8QlAsfmI1CQhIwzpgKYYuBbD7AkzBd59kc/exec';
+        // Panggil Netlify Function, bukan Apps Script langsung
+        const API_ENDPOINT_URL = '/.netlify/functions/api-handler';
 
         const generateCodeButton = document.getElementById('generateCodeButton');
         const numCodesInput = document.getElementById('numCodes');
@@ -128,16 +128,16 @@
             const numCodes = parseInt(numCodesInput.value);
             generatedCodesDiv.innerHTML = '<h2>Kode yang Dihasilkan:</h2>';
             messageDisplay.textContent = 'Membuat kode...';
-            messageDisplay.style.color = '#cccccc'; // Abu-abu saat loading
+            messageDisplay.style.color = '#cccccc';
 
             if (isNaN(numCodes) || numCodes < 1) {
                 messageDisplay.textContent = 'Jumlah kode tidak valid.';
-                messageDisplay.style.color = '#ff4d4d'; // Merah
+                messageDisplay.style.color = '#ff4d4d';
                 return;
             }
 
             try {
-                const response = await fetch(APPS_SCRIPT_URL, {
+                const response = await fetch(API_ENDPOINT_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -158,15 +158,15 @@
                         generatedCodesDiv.appendChild(codeItem);
                     });
                     messageDisplay.textContent = `Berhasil membuat ${numCodes} kode baru.`;
-                    messageDisplay.style.color = '#4CAF50'; // Hijau
+                    messageDisplay.style.color = '#4CAF50';
                 } else {
                     messageDisplay.textContent = 'Gagal membuat kode: ' + result.message;
-                    messageDisplay.style.color = '#ff4d4d'; // Merah
+                    messageDisplay.style.color = '#ff4d4d';
                 }
             } catch (error) {
                 console.error('Error:', error);
                 messageDisplay.textContent = 'Terjadi kesalahan saat membuat kode. Coba lagi.';
-                messageDisplay.style.color = '#ff4d4d'; // Merah
+                messageDisplay.style.color = '#ff4d4d';
             }
         });
 
