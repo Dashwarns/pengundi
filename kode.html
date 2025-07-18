@@ -116,19 +116,19 @@
     </div>
 
     <script>
+        // GANTI DENGAN URL APLIKASI WEB GOOGLE APPS SCRIPT ANDA
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxjW8jDpAczBX2yLEb-FiRLPhMZ6qWw_8QlAsfmI1CQhIwzpgKYYuBbD7AkzBd59kc/exec';
+
         const generateCodeButton = document.getElementById('generateCodeButton');
         const numCodesInput = document.getElementById('numCodes');
         const generatedCodesDiv = document.getElementById('generatedCodes');
         const messageDisplay = document.getElementById('message');
 
-        // Ini adalah tempat penyimpanan sementara untuk kode redeem
-        // Dalam aplikasi nyata, ini harus dari server/database
-        let redeemCodes = JSON.parse(localStorage.getItem('redeemCodes')) || {};
-
-        generateCodeButton.addEventListener('click', () => {
+        generateCodeButton.addEventListener('click', async () => {
             const numCodes = parseInt(numCodesInput.value);
             generatedCodesDiv.innerHTML = '<h2>Kode yang Dihasilkan:</h2>';
-            messageDisplay.textContent = '';
+            messageDisplay.textContent = 'Membuat kode...';
+            messageDisplay.style.color = '#cccccc'; // Abu-abu saat loading
 
             if (isNaN(numCodes) || numCodes < 1) {
                 messageDisplay.textContent = 'Jumlah kode tidak valid.';
@@ -136,20 +136,38 @@
                 return;
             }
 
-            for (let i = 0; i < numCodes; i++) {
-                // Hasilkan panjang kode acak antara 7 dan 10
-                const codeLength = Math.floor(Math.random() * (10 - 7 + 1)) + 7;
-                const newCode = generateRandomCode(codeLength);
-                redeemCodes[newCode] = { used: false, prize: '' }; // Simpan dengan status belum digunakan
-                
-                const codeItem = document.createElement('div');
-                codeItem.classList.add('code-item');
-                codeItem.innerHTML = `<span>${newCode}</span><button class="copy-button" data-code="${newCode}">Salin</button>`;
-                generatedCodesDiv.appendChild(codeItem);
+            try {
+                const response = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'generateCode',
+                        numCodes: numCodes
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    result.codes.forEach(newCode => {
+                        const codeItem = document.createElement('div');
+                        codeItem.classList.add('code-item');
+                        codeItem.innerHTML = `<span>${newCode}</span><button class="copy-button" data-code="${newCode}">Salin</button>`;
+                        generatedCodesDiv.appendChild(codeItem);
+                    });
+                    messageDisplay.textContent = `Berhasil membuat ${numCodes} kode baru.`;
+                    messageDisplay.style.color = '#4CAF50'; // Hijau
+                } else {
+                    messageDisplay.textContent = 'Gagal membuat kode: ' + result.message;
+                    messageDisplay.style.color = '#ff4d4d'; // Merah
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                messageDisplay.textContent = 'Terjadi kesalahan saat membuat kode. Coba lagi.';
+                messageDisplay.style.color = '#ff4d4d'; // Merah
             }
-            localStorage.setItem('redeemCodes', JSON.stringify(redeemCodes));
-            messageDisplay.textContent = `Berhasil membuat ${numCodes} kode baru.`;
-            messageDisplay.style.color = '#4CAF50'; // Hijau
         });
 
         generatedCodesDiv.addEventListener('click', (event) => {
@@ -165,16 +183,6 @@
                 });
             }
         });
-
-        function generateRandomCode(length) {
-            const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-            let result = '';
-            const charactersLength = characters.length;
-            for (let i = 0; i < length; i++) {
-                result += characters.charAt(Math.floor(Math.random() * charactersLength));
-            }
-            return result;
-        }
     </script>
 </body>
 </html>
