@@ -7,7 +7,7 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #1a1a1a; /* Dominan Hitam */
+            background-color: #1a1a1a;
             color: #ffffff;
             display: flex;
             flex-direction: column;
@@ -19,7 +19,7 @@
             box-sizing: border-box;
         }
         .container {
-            background-color: #333333; /* Warna gelap untuk kontainer */
+            background-color: #333333;
             padding: 40px;
             border-radius: 10px;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
@@ -28,7 +28,7 @@
             width: 100%;
         }
         h1 {
-            color: #9370DB; /* Ungu */
+            color: #9370DB;
             margin-bottom: 30px;
             font-size: 2.5em;
         }
@@ -51,7 +51,7 @@
             text-align: center;
         }
         .spin-button {
-            background-color: #9370DB; /* Ungu */
+            background-color: #9370DB;
             color: white;
             padding: 15px 30px;
             border: none;
@@ -63,18 +63,18 @@
             font-weight: bold;
         }
         .spin-button:hover {
-            background-color: #7B68EE; /* Ungu sedikit lebih gelap */
+            background-color: #7B68EE;
         }
         .message {
             margin-top: 20px;
             font-size: 1.1em;
-            color: #ff4d4d; /* Merah untuk pesan error */
+            color: #ff4d4d;
         }
         .prize-display {
             margin-top: 20px;
             font-size: 1.4em;
             font-weight: bold;
-            color: #4CAF50; /* Hijau untuk hadiah */
+            color: #4CAF50;
         }
     </style>
 </head>
@@ -90,8 +90,8 @@
     </div>
 
     <script>
-        // GANTI DENGAN URL APLIKASI WEB GOOGLE APPS SCRIPT ANDA
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxjW8jDpAczBX2yLEb-FiRLPhMZ6qWw_8QlAsfmI1CQhIwzpgKYYuBbD7AkzBd59kc/exec';
+        // Panggil Netlify Function, bukan Apps Script langsung
+        const API_ENDPOINT_URL = '/.netlify/functions/api-handler';
 
         // Data Hadiah dengan Probabilitas
         const prizes = [
@@ -120,11 +120,10 @@
                 return;
             }
 
-            // Lakukan undian terlebih dahulu di frontend
             const wonPrize = drawPrize();
 
             try {
-                const response = await fetch(APPS_SCRIPT_URL, {
+                const response = await fetch(API_ENDPOINT_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -132,23 +131,25 @@
                     body: JSON.stringify({
                         action: 'checkAndUseCode',
                         code: code,
-                        prize: wonPrize.name // Kirim hadiah yang dimenangkan ke Apps Script
+                        prize: wonPrize.name // Kirim hadiah yang dimenangkan ke Apps Script via Netlify Function
                     })
                 });
 
                 const result = await response.json();
 
                 if (result.success) {
-                    if (result.status === 'used') { // Ini seharusnya tidak terjadi jika logika benar, tapi untuk jaga-jaga
+                    if (result.status === 'used_now') { // Kode berhasil digunakan
+                        redeemCodeInput.value = '';
+                        redeemCodeInput.placeholder = `Selamat! Anda mendapatkan: ${wonPrize.name}`;
+                        redeemCodeInput.setAttribute('disabled', 'true');
+                        prizeDisplay.textContent = `Selamat! Anda mendapatkan: ${wonPrize.name}`;
+                        spinButton.style.display = 'none';
+                    } else if (result.status === 'used') { // Kode sudah digunakan sebelumnya
                         redeemCodeInput.value = '';
                         redeemCodeInput.placeholder = `Kode ini sudah digunakan. Hadiah: ${result.prize}`;
                         messageDisplay.textContent = 'Kode redeem yang Anda pakai sudah digunakan.';
-                    } else { // Kode berhasil digunakan
-                        redeemCodeInput.value = ''; // Kosongkan input
-                        redeemCodeInput.placeholder = `Selamat! Anda mendapatkan: ${wonPrize.name}`; // Tampilkan hadiah
-                        redeemCodeInput.setAttribute('disabled', 'true'); // Nonaktifkan input
-                        prizeDisplay.textContent = `Selamat! Anda mendapatkan: ${wonPrize.name}`;
-                        spinButton.style.display = 'none'; // Sembunyikan tombol Spin
+                        prizeDisplay.textContent = `Hadiah sebelumnya: ${result.prize}`;
+                        spinButton.style.display = 'none'; // Sembunyikan tombol jika sudah terpakai
                     }
                 } else {
                     messageDisplay.textContent = result.message;
@@ -177,7 +178,6 @@
             return prizes[0]; // Fallback
         }
 
-        // Fungsi untuk mengambil parameter dari URL
         function getUrlParameter(name) {
             name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
             var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
@@ -185,12 +185,10 @@
             return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
         };
 
-        // Otomatis masukkan kode jika ada di URL (misal dari halaman admin/pembuat kode)
         const codeFromUrl = getUrlParameter('code');
         if (codeFromUrl) {
             redeemCodeInput.value = codeFromUrl;
         }
-
     </script>
 </body>
 </html>
