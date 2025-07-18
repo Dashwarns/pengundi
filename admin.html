@@ -69,17 +69,23 @@
         .redeem-link:hover {
             color: #6A5ACD; /* Biru keunguan */
         }
+        #message {
+            margin-top: 20px;
+            color: #ff4d4d; /* Merah untuk pesan error */
+        }
     </style>
 </head>
 <body>
     <h1>DashwarnStore - Admin Panel</h1>
     <div class="container">
+        <div id="message"></div>
         <table>
             <thead>
                 <tr>
                     <th>Kode Redeem</th>
                     <th>Status</th>
                     <th>Hadiah</th>
+                    <th>Timestamp</th>
                     <th>Aksi</th>
                 </tr>
             </thead>
@@ -89,41 +95,66 @@
     </div>
 
     <script>
-        const codeListBody = document.getElementById('codeList');
+        // GANTI DENGAN URL APLIKASI WEB GOOGLE APPS SCRIPT ANDA
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxjW8jDpAczBX2yLEb-FiRLPhMZ6qWw_8QlAsfmI1CQhIwzpgKYYuBbD7AkzBd59kc/exec';
 
-        function loadRedeemCodes() {
-            const redeemCodes = JSON.parse(localStorage.getItem('redeemCodes')) || {};
+        const codeListBody = document.getElementById('codeList');
+        const messageDisplay = document.getElementById('message');
+
+        async function loadRedeemCodes() {
+            messageDisplay.textContent = 'Memuat data kode...';
+            messageDisplay.style.color = '#cccccc'; // Abu-abu saat loading
             codeListBody.innerHTML = ''; // Bersihkan daftar sebelumnya
 
-            if (Object.keys(redeemCodes).length === 0) {
-                const noCodeRow = document.createElement('tr');
-                noCodeRow.innerHTML = `<td colspan="4" style="text-align: center; padding: 20px;">Belum ada kode redeem yang dibuat.</td>`;
-                codeListBody.appendChild(noCodeRow);
-                return;
-            }
+            try {
+                const response = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'getAllCodes'
+                    })
+                });
 
-            for (const code in redeemCodes) {
-                const codeData = redeemCodes[code];
-                const row = document.createElement('tr');
-                const statusClass = codeData.used ? 'status-used' : 'status-unused';
-                const statusText = codeData.used ? 'Sudah Digunakan' : 'Belum Digunakan';
-                const prizeText = codeData.prize || '-';
+                const result = await response.json();
 
-                row.innerHTML = `
-                    <td>${code}</td>
-                    <td class="${statusClass}">${statusText}</td>
-                    <td>${prizeText}</td>
-                    <td><a href="index.html?code=${code}" class="redeem-link" target="_blank">Redeem</a></td>
-                `;
-                codeListBody.appendChild(row);
+                if (result.success) {
+                    messageDisplay.textContent = ''; // Hapus pesan loading
+                    if (result.codes.length === 0) {
+                        const noCodeRow = document.createElement('tr');
+                        noCodeRow.innerHTML = `<td colspan="5" style="text-align: center; padding: 20px;">Belum ada kode redeem yang dibuat.</td>`;
+                        codeListBody.appendChild(noCodeRow);
+                    } else {
+                        result.codes.forEach(codeData => {
+                            const row = document.createElement('tr');
+                            const statusClass = codeData.status === 'Digunakan' ? 'status-used' : 'status-unused';
+                            const prizeText = codeData.prize || '-';
+                            const timestampText = codeData.timestamp || '-';
+
+                            row.innerHTML = `
+                                <td>${codeData.code}</td>
+                                <td class="${statusClass}">${codeData.status}</td>
+                                <td>${prizeText}</td>
+                                <td>${timestampText}</td>
+                                <td><a href="index.html?code=${codeData.code}" class="redeem-link" target="_blank">Redeem</a></td>
+                            `;
+                            codeListBody.appendChild(row);
+                        });
+                    }
+                } else {
+                    messageDisplay.textContent = 'Gagal memuat kode: ' + result.message;
+                    messageDisplay.style.color = '#ff4d4d'; // Merah
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                messageDisplay.textContent = 'Terjadi kesalahan saat memuat data. Coba lagi.';
+                messageDisplay.style.color = '#ff4d4d'; // Merah
             }
         }
 
         // Muat kode saat halaman dimuat
         loadRedeemCodes();
-
-        // Refresh daftar setiap beberapa detik (opsional, untuk demonstrasi)
-        // setInterval(loadRedeemCodes, 5000);
     </script>
 </body>
 </html>
