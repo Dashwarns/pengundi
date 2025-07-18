@@ -7,7 +7,7 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #1a1a1a; /* Dominan Hitam */
+            background-color: #1a1a1a;
             color: #ffffff;
             display: flex;
             flex-direction: column;
@@ -27,7 +27,7 @@
             width: 100%;
         }
         h1 {
-            color: #9370DB; /* Ungu */
+            color: #9370DB;
             margin-bottom: 30px;
             font-size: 2.5em;
         }
@@ -45,7 +45,7 @@
             text-align: left;
         }
         th {
-            background-color: #9370DB; /* Ungu */
+            background-color: #9370DB;
             color: white;
             text-transform: uppercase;
             font-weight: bold;
@@ -54,24 +54,24 @@
             border-bottom: none;
         }
         .status-used {
-            color: #ff4d4d; /* Merah untuk sudah digunakan */
+            color: #ff4d4d;
             font-weight: bold;
         }
         .status-unused {
-            color: #4CAF50; /* Hijau untuk belum digunakan */
+            color: #4CAF50;
             font-weight: bold;
         }
         .redeem-link {
-            color: #87CEEB; /* Biru muda */
+            color: #87CEEB;
             text-decoration: none;
             transition: color 0.3s ease;
         }
         .redeem-link:hover {
-            color: #6A5ACD; /* Biru keunguan */
+            color: #6A5ACD;
         }
         #message {
             margin-top: 20px;
-            color: #ff4d4d; /* Merah untuk pesan error */
+            color: #ff4d4d;
         }
     </style>
 </head>
@@ -95,19 +95,19 @@
     </div>
 
     <script>
-        // GANTI DENGAN URL APLIKASI WEB GOOGLE APPS SCRIPT ANDA
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxjW8jDpAczBX2yLEb-FiRLPhMZ6qWw_8QlAsfmI1CQhIwzpgKYYuBbD7AkzBd59kc/exec';
+        // Panggil Netlify Function, bukan Apps Script langsung
+        const API_ENDPOINT_URL = '/.netlify/functions/api-handler';
 
         const codeListBody = document.getElementById('codeList');
         const messageDisplay = document.getElementById('message');
 
         async function loadRedeemCodes() {
             messageDisplay.textContent = 'Memuat data kode...';
-            messageDisplay.style.color = '#cccccc'; // Abu-abu saat loading
-            codeListBody.innerHTML = ''; // Bersihkan daftar sebelumnya
+            messageDisplay.style.color = '#cccccc';
+            codeListBody.innerHTML = '';
 
             try {
-                const response = await fetch(APPS_SCRIPT_URL, {
+                const response = await fetch(API_ENDPOINT_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -120,7 +120,7 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    messageDisplay.textContent = ''; // Hapus pesan loading
+                    messageDisplay.textContent = '';
                     if (result.codes.length === 0) {
                         const noCodeRow = document.createElement('tr');
                         noCodeRow.innerHTML = `<td colspan="5" style="text-align: center; padding: 20px;">Belum ada kode redeem yang dibuat.</td>`;
@@ -144,16 +144,15 @@
                     }
                 } else {
                     messageDisplay.textContent = 'Gagal memuat kode: ' + result.message;
-                    messageDisplay.style.color = '#ff4d4d'; // Merah
+                    messageDisplay.style.color = '#ff4d4d';
                 }
             } catch (error) {
                 console.error('Error:', error);
                 messageDisplay.textContent = 'Terjadi kesalahan saat memuat data. Coba lagi.';
-                messageDisplay.style.color = '#ff4d4d'; // Merah
+                messageDisplay.style.color = '#ff4d4d';
             }
         }
 
-        // Muat kode saat halaman dimuat
         loadRedeemCodes();
     </script>
 </body>
