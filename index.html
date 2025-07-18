@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DashwarnStore - Undian Hadiah</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1a1a1a; /* Dominan Hitam */
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #333333; /* Warna gelap untuk kontainer */
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+        }
+        h1 {
+            color: #9370DB; /* Ungu */
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        .input-area {
+            background-color: #ffffff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #redeemCodeInput {
+            border: none;
+            outline: none;
+            background: transparent;
+            color: #333333;
+            font-size: 1.2em;
+            width: 100%;
+            text-align: center;
+        }
+        .spin-button {
+            background-color: #9370DB; /* Ungu */
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.3em;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        .spin-button:hover {
+            background-color: #7B68EE; /* Ungu sedikit lebih gelap */
+        }
+        .message {
+            margin-top: 20px;
+            font-size: 1.1em;
+            color: #ff4d4d; /* Merah untuk pesan error */
+        }
+        .prize-display {
+            margin-top: 20px;
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #4CAF50; /* Hijau untuk hadiah */
+        }
+    </style>
+</head>
+<body>
+    <h1>DashwarnStore</h1>
+    <div class="container">
+        <div class="input-area">
+            <input type="text" id="redeemCodeInput" placeholder="Masukkan kode redeem Anda di sini">
+        </div>
+        <button class="spin-button" id="spinButton">Spin!</button>
+        <div class="message" id="message"></div>
+        <div class="prize-display" id="prizeDisplay"></div>
+    </div>
+
+    <script>
+        // Data Hadiah dengan Probabilitas
+        const prizes = [
+            { name: 'Girafa', probability: 34 },
+            { name: 'Tralalelo', probability: 30 },
+            { name: 'Udin Din Dun', probability: 20 },
+            { name: 'Lavaca', probability: 15 },
+            { name: 'Los tralalelitos', probability: 1 },
+            { name: 'Las tralalelitas', probability: 0.7 },
+            { name: 'Graipuss', probability: 0.2 },
+            { name: 'La grande', probability: 0.1 }
+        ];
+
+        // Ini hanya contoh data kode redeem yang disimpan di localStorage
+        // Dalam aplikasi nyata, ini harus dari server/database
+        let redeemCodes = JSON.parse(localStorage.getItem('redeemCodes')) || {};
+        // Contoh kode yang sudah digunakan untuk testing
+        // redeemCodes['TEST1234'] = { used: false, prize: '' };
+        // localStorage.setItem('redeemCodes', JSON.stringify(redeeemCodes));
+
+
+        const redeemCodeInput = document.getElementById('redeemCodeInput');
+        const spinButton = document.getElementById('spinButton');
+        const messageDisplay = document.getElementById('message');
+        const prizeDisplay = document.getElementById('prizeDisplay');
+
+        spinButton.addEventListener('click', () => {
+            const code = redeemCodeInput.value.trim().toUpperCase();
+            messageDisplay.textContent = '';
+            prizeDisplay.textContent = '';
+
+            if (!code) {
+                messageDisplay.textContent = 'Silakan masukkan kode redeem.';
+                return;
+            }
+
+            if (!redeemCodes[code]) {
+                messageDisplay.textContent = 'Kode redeem yang Anda pakai tidak ada.';
+                return;
+            }
+
+            if (redeemCodes[code].used) {
+                messageDisplay.textContent = 'Kode redeem yang Anda pakai sudah digunakan.';
+                return;
+            }
+
+            // Tandai kode sebagai sudah digunakan
+            redeemCodes[code].used = true;
+            localStorage.setItem('redeemCodes', JSON.stringify(redeemCodes));
+
+            // Lakukan undian
+            const wonPrize = drawPrize();
+            redeemCodes[code].prize = wonPrize.name; // Simpan hadiah yang dimenangkan
+            localStorage.setItem('redeemCodes', JSON.stringify(redeemCodes));
+
+
+            redeemCodeInput.value = ''; // Kosongkan input
+            redeemCodeInput.placeholder = `Selamat! Anda mendapatkan: ${wonPrize.name}`; // Tampilkan hadiah
+            redeemCodeInput.setAttribute('disabled', 'true'); // Nonaktifkan input
+            prizeDisplay.textContent = `Selamat! Anda mendapatkan: ${wonPrize.name}`;
+            spinButton.style.display = 'none'; // Sembunyikan tombol Spin
+
+            // Jika Anda ingin tombol muncul lagi setelah reload atau kembali
+            // Anda perlu menyegarkan halaman atau mengelola state dengan lebih canggih.
+            // Untuk saat ini, hanya tersembunyi setelah undian.
+        });
+
+        function drawPrize() {
+            let totalProbability = prizes.reduce((sum, prize) => sum + prize.probability, 0);
+            let randomNumber = Math.random() * totalProbability;
+            let cumulativeProbability = 0;
+
+            for (const prize of prizes) {
+                cumulativeProbability += prize.probability;
+                if (randomNumber <= cumulativeProbability) {
+                    return prize;
+                }
+            }
+            // Fallback jika ada masalah (seharusnya tidak terjadi jika totalProbability 100)
+            return prizes[0];
+        }
+
+        // Fungsi untuk mengambil parameter dari URL
+        function getUrlParameter(name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            var results = regex.exec(location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        };
+
+        // Otomatis masukkan kode jika ada di URL (misal dari halaman admin/pembuat kode)
+        const codeFromUrl = getUrlParameter('code');
+        if (codeFromUrl) {
+            redeemCodeInput.value = codeFromUrl;
+        }
+
+    </script>
+</body>
+</html>
