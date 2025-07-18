@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DashwarnStore - Admin</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1a1a1a; /* Dominan Hitam */
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #333333;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            max-width: 800px;
+            width: 100%;
+        }
+        h1 {
+            color: #9370DB; /* Ungu */
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: #444444;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #555555;
+            text-align: left;
+        }
+        th {
+            background-color: #9370DB; /* Ungu */
+            color: white;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        .status-used {
+            color: #ff4d4d; /* Merah untuk sudah digunakan */
+            font-weight: bold;
+        }
+        .status-unused {
+            color: #4CAF50; /* Hijau untuk belum digunakan */
+            font-weight: bold;
+        }
+        .redeem-link {
+            color: #87CEEB; /* Biru muda */
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+        .redeem-link:hover {
+            color: #6A5ACD; /* Biru keunguan */
+        }
+    </style>
+</head>
+<body>
+    <h1>DashwarnStore - Admin Panel</h1>
+    <div class="container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Kode Redeem</th>
+                    <th>Status</th>
+                    <th>Hadiah</th>
+                    <th>Aksi</th>
+                </tr>
+            </thead>
+            <tbody id="codeList">
+                </tbody>
+        </table>
+    </div>
+
+    <script>
+        const codeListBody = document.getElementById('codeList');
+
+        function loadRedeemCodes() {
+            const redeemCodes = JSON.parse(localStorage.getItem('redeemCodes')) || {};
+            codeListBody.innerHTML = ''; // Bersihkan daftar sebelumnya
+
+            if (Object.keys(redeemCodes).length === 0) {
+                const noCodeRow = document.createElement('tr');
+                noCodeRow.innerHTML = `<td colspan="4" style="text-align: center; padding: 20px;">Belum ada kode redeem yang dibuat.</td>`;
+                codeListBody.appendChild(noCodeRow);
+                return;
+            }
+
+            for (const code in redeemCodes) {
+                const codeData = redeemCodes[code];
+                const row = document.createElement('tr');
+                const statusClass = codeData.used ? 'status-used' : 'status-unused';
+                const statusText = codeData.used ? 'Sudah Digunakan' : 'Belum Digunakan';
+                const prizeText = codeData.prize || '-';
+
+                row.innerHTML = `
+                    <td>${code}</td>
+                    <td class="${statusClass}">${statusText}</td>
+                    <td>${prizeText}</td>
+                    <td><a href="index.html?code=${code}" class="redeem-link" target="_blank">Redeem</a></td>
+                `;
+                codeListBody.appendChild(row);
+            }
+        }
+
+        // Muat kode saat halaman dimuat
+        loadRedeemCodes();
+
+        // Refresh daftar setiap beberapa detik (opsional, untuk demonstrasi)
+        // setInterval(loadRedeemCodes, 5000);
+    </script>
+</body>
+</html>
