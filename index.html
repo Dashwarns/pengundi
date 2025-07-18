@@ -90,6 +90,9 @@
     </div>
 
     <script>
+        // GANTI DENGAN URL APLIKASI WEB GOOGLE APPS SCRIPT ANDA
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxjW8jDpAczBX2yLEb-FiRLPhMZ6qWw_8QlAsfmI1CQhIwzpgKYYuBbD7AkzBd59kc/exec';
+
         // Data Hadiah dengan Probabilitas
         const prizes = [
             { name: 'Girafa', probability: 34 },
@@ -102,20 +105,12 @@
             { name: 'La grande', probability: 0.1 }
         ];
 
-        // Ini hanya contoh data kode redeem yang disimpan di localStorage
-        // Dalam aplikasi nyata, ini harus dari server/database
-        let redeemCodes = JSON.parse(localStorage.getItem('redeemCodes')) || {};
-        // Contoh kode yang sudah digunakan untuk testing
-        // redeemCodes['TEST1234'] = { used: false, prize: '' };
-        // localStorage.setItem('redeemCodes', JSON.stringify(redeeemCodes));
-
-
         const redeemCodeInput = document.getElementById('redeemCodeInput');
         const spinButton = document.getElementById('spinButton');
         const messageDisplay = document.getElementById('message');
         const prizeDisplay = document.getElementById('prizeDisplay');
 
-        spinButton.addEventListener('click', () => {
+        spinButton.addEventListener('click', async () => {
             const code = redeemCodeInput.value.trim().toUpperCase();
             messageDisplay.textContent = '';
             prizeDisplay.textContent = '';
@@ -125,35 +120,47 @@
                 return;
             }
 
-            if (!redeemCodes[code]) {
-                messageDisplay.textContent = 'Kode redeem yang Anda pakai tidak ada.';
-                return;
-            }
-
-            if (redeemCodes[code].used) {
-                messageDisplay.textContent = 'Kode redeem yang Anda pakai sudah digunakan.';
-                return;
-            }
-
-            // Tandai kode sebagai sudah digunakan
-            redeemCodes[code].used = true;
-            localStorage.setItem('redeemCodes', JSON.stringify(redeemCodes));
-
-            // Lakukan undian
+            // Lakukan undian terlebih dahulu di frontend
             const wonPrize = drawPrize();
-            redeemCodes[code].prize = wonPrize.name; // Simpan hadiah yang dimenangkan
-            localStorage.setItem('redeemCodes', JSON.stringify(redeemCodes));
 
+            try {
+                const response = await fetch(APPS_SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'checkAndUseCode',
+                        code: code,
+                        prize: wonPrize.name // Kirim hadiah yang dimenangkan ke Apps Script
+                    })
+                });
 
-            redeemCodeInput.value = ''; // Kosongkan input
-            redeemCodeInput.placeholder = `Selamat! Anda mendapatkan: ${wonPrize.name}`; // Tampilkan hadiah
-            redeemCodeInput.setAttribute('disabled', 'true'); // Nonaktifkan input
-            prizeDisplay.textContent = `Selamat! Anda mendapatkan: ${wonPrize.name}`;
-            spinButton.style.display = 'none'; // Sembunyikan tombol Spin
+                const result = await response.json();
 
-            // Jika Anda ingin tombol muncul lagi setelah reload atau kembali
-            // Anda perlu menyegarkan halaman atau mengelola state dengan lebih canggih.
-            // Untuk saat ini, hanya tersembunyi setelah undian.
+                if (result.success) {
+                    if (result.status === 'used') { // Ini seharusnya tidak terjadi jika logika benar, tapi untuk jaga-jaga
+                        redeemCodeInput.value = '';
+                        redeemCodeInput.placeholder = `Kode ini sudah digunakan. Hadiah: ${result.prize}`;
+                        messageDisplay.textContent = 'Kode redeem yang Anda pakai sudah digunakan.';
+                    } else { // Kode berhasil digunakan
+                        redeemCodeInput.value = ''; // Kosongkan input
+                        redeemCodeInput.placeholder = `Selamat! Anda mendapatkan: ${wonPrize.name}`; // Tampilkan hadiah
+                        redeemCodeInput.setAttribute('disabled', 'true'); // Nonaktifkan input
+                        prizeDisplay.textContent = `Selamat! Anda mendapatkan: ${wonPrize.name}`;
+                        spinButton.style.display = 'none'; // Sembunyikan tombol Spin
+                    }
+                } else {
+                    messageDisplay.textContent = result.message;
+                    if (result.message === 'Kode redeem sudah digunakan.' && result.prize) {
+                        prizeDisplay.textContent = `Hadiah sebelumnya: ${result.prize}`;
+                    }
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                messageDisplay.textContent = 'Terjadi kesalahan saat memproses permintaan. Coba lagi.';
+            }
         });
 
         function drawPrize() {
@@ -167,8 +174,7 @@
                     return prize;
                 }
             }
-            // Fallback jika ada masalah (seharusnya tidak terjadi jika totalProbability 100)
-            return prizes[0];
+            return prizes[0]; // Fallback
         }
 
         // Fungsi untuk mengambil parameter dari URL
