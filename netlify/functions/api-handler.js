@@ -1,9 +1,14 @@
 // netlify/functions/api-handler.js
 
+// Instal Firebase Admin SDK (npm install firebase-admin)
+// Ini akan otomatis diinstal oleh Netlify saat build
 const admin = require('firebase-admin');
 
+// Ambil kredensial service account dari environment variables
+// Pastikan ini adalah string JSON yang dienkripsi atau langsung di paste
 const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
+// Pastikan untuk menginisialisasi Firebase Admin SDK HANYA SEKALI
 if (!admin.apps.length) {
     try {
         const serviceAccount = JSON.parse(serviceAccountString);
@@ -17,10 +22,7 @@ if (!admin.apps.length) {
 }
 
 const db = admin.firestore();
-const collectionRef = db.collection('redeemCodes');
-
-// Ambil password admin dari Environment Variable
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+const collectionRef = db.collection('redeemCodes'); // Nama koleksi Firestore Anda
 
 exports.handler = async (event, context) => {
     if (event.httpMethod !== 'POST') {
@@ -37,31 +39,14 @@ exports.handler = async (event, context) => {
 
         let response = {};
 
-        // --- Aksi Baru: Verifikasi Password ---
-        if (action === 'verifyPassword') {
-            const enteredPassword = payload.password;
-            if (enteredPassword === ADMIN_PASSWORD) { // Verifikasi password
-                response = { success: true, message: 'Password benar.' };
-            } else {
-                response = { success: false, message: 'Password salah.' };
-            }
-        }
-        // --- Akhir Aksi Baru ---
-
-        else if (action === 'generateCode') {
-            // OPTIONAL: Anda bisa menambahkan cek password di sini juga
-            // jika Anda ingin memastikan setiap permintaan `generateCode`
-            // juga membawa password yang benar.
-            // Namun, karena frontend sudah melakukan verifikasi awal,
-            // untuk kasus sederhana ini, kita asumsikan akses sudah diberikan.
-
+        if (action === 'generateCode') {
             const numCodes = payload.numCodes;
             const generatedCodes = [];
-            const batch = db.batch();
+            const batch = db.batch(); // Menggunakan batch untuk menulis banyak dokumen lebih efisien
 
             for (let i = 0; i < numCodes; i++) {
                 const newCode = generateRandomCode(7, 10);
-                const docRef = collectionRef.doc(newCode);
+                const docRef = collectionRef.doc(newCode); // Gunakan kode sebagai ID dokumen
                 batch.set(docRef, {
                     code: newCode,
                     status: 'Belum',
@@ -70,13 +55,13 @@ exports.handler = async (event, context) => {
                 });
                 generatedCodes.push(newCode);
             }
-            await batch.commit();
+            await batch.commit(); // Tulis semua dokumen dalam satu operasi batch
             response = { success: true, codes: generatedCodes };
 
         } else if (action === 'checkAndUseCode') {
             const code = payload.code.toUpperCase();
             const wonPrize = payload.prize;
-            const docRef = collectionRef.doc(code);
+            const docRef = collectionRef.doc(code); // Dapatkan dokumen berdasarkan kode
             const doc = await docRef.get();
 
             if (!doc.exists) {
@@ -86,6 +71,7 @@ exports.handler = async (event, context) => {
                 if (codeData.status === 'Digunakan') {
                     response = { success: false, message: 'Kode redeem sudah digunakan.', prize: codeData.prize };
                 } else {
+                    // Update status kode
                     await docRef.update({
                         status: 'Digunakan',
                         prize: wonPrize,
@@ -96,7 +82,7 @@ exports.handler = async (event, context) => {
             }
 
         } else if (action === 'getAllCodes') {
-            const snapshot = await collectionRef.orderBy('code').get();
+            const snapshot = await collectionRef.orderBy('code').get(); // Ambil semua dokumen
             const codesData = [];
             snapshot.forEach(doc => {
                 codesData.push(doc.data());
@@ -112,7 +98,7 @@ exports.handler = async (event, context) => {
             body: JSON.stringify(response),
             headers: {
                 'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': 'https://dashwarnstore.netlify.app' // Ganti jika domain Anda berbeda
+                'Access-Control-Allow-Origin': 'https://dashwarnstore.netlify.app'
             }
         };
 
@@ -126,6 +112,7 @@ exports.handler = async (event, context) => {
     }
 };
 
+// Fungsi pembantu untuk menghasilkan kode acak
 function generateRandomCode(minLength, maxLength) {
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     const length = Math.floor(Math.random() * (maxLength - minLength + 1)) + minLength;
