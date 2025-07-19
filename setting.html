@@ -94,20 +94,20 @@
         </div>
 
         <div id="settingSection">
-            <p>Gunakan format: <strong>(Kode) (Hadiah)</strong></p>
+            <p><strong>Catatan:</strong> Fitur ini hanya untuk simulasi dan tidak menyimpan pengaturan hadiah permanen.</p>
             <label for="codeInput">Kode Redeem:</label>
             <input type="text" id="codeInput" placeholder="Contoh: ABCXYZ">
 
             <label for="prizeInput">Hadiah yang Diinginkan:</label>
             <input type="text" id="prizeInput" placeholder="Contoh: Girafa Emas">
 
-            <button id="setPrizeButton">Set Hadiah</button>
+            <button id="setPrizeButton">Set Hadiah (Simulasi)</button>
             <div id="settingMessage" class="message"></div>
         </div>
     </div>
 
     <script>
-        const API_ENDPOINT_URL = '/.netlify/functions/api-handler';
+        const API_ENDPOINT_URL = '/.netlify/functions/api-handler'; // URL ke Netlify Function Anda
 
         // Elemen otentikasi
         const authSection = document.getElementById('authSection');
@@ -121,6 +121,8 @@
         const prizeInput = document.getElementById('prizeInput');
         const setPrizeButton = document.getElementById('setPrizeButton');
         const settingMessage = document.getElementById('settingMessage');
+
+        let verifiedAdminPassword = ''; // Untuk menyimpan password yang sudah diverifikasi
 
         // Event listener untuk tombol verifikasi password
         verifyPasswordButton.addEventListener('click', async () => {
@@ -139,13 +141,8 @@
             try {
                 const response = await fetch(API_ENDPOINT_URL, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        action: 'verifyPassword',
-                        password: password
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'verifyPassword', password: password })
                 });
 
                 const result = await response.json();
@@ -153,14 +150,15 @@
                 if (result.success) {
                     authMessage.textContent = 'Password berhasil diverifikasi!';
                     authMessage.style.color = '#4CAF50';
-                    authSection.style.display = 'none'; // Sembunyikan auth
-                    settingSection.style.display = 'block'; // Tampilkan pengaturan
+                    verifiedAdminPassword = password; // Simpan password yang berhasil
+                    authSection.style.display = 'none';
+                    settingSection.style.display = 'block';
                 } else {
                     authMessage.textContent = 'Password salah. Coba lagi.';
                     authMessage.style.color = '#ff4d4d';
                     verifyPasswordButton.disabled = false;
                     adminPasswordInput.disabled = false;
-                    adminPasswordInput.value = ''; // Kosongkan password
+                    adminPasswordInput.value = '';
                 }
             } catch (error) {
                 console.error('Error verifying password:', error);
@@ -186,35 +184,34 @@
                 return;
             }
 
-            settingMessage.textContent = 'Mengatur hadiah...';
+            settingMessage.textContent = 'Mengatur hadiah (simulasi)...';
             settingMessage.style.color = '#cccccc';
 
             try {
                 const response = await fetch(API_ENDPOINT_URL, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        action: 'setPrize', // Aksi baru untuk Netlify Function
+                        action: 'setPrize',
                         code: code,
-                        prize: prize
+                        prize: prize,
+                        password: verifiedAdminPassword // Kirim password untuk verifikasi backend
                     })
                 });
 
                 const result = await response.json();
 
                 if (result.success) {
-                    settingMessage.textContent = `Berhasil mengatur hadiah "${result.prize}" untuk kode "${result.code}".`;
+                    settingMessage.textContent = result.message; // Akan menampilkan pesan simulasi
                     settingMessage.style.color = '#4CAF50';
                     codeInput.value = '';
                     prizeInput.value = '';
                 } else {
-                    settingMessage.textContent = 'Gagal mengatur hadiah: ' + result.message;
+                    settingMessage.textContent = 'Gagal mengatur hadiah (simulasi): ' + result.message;
                     settingMessage.style.color = '#ff4d4d';
                 }
             } catch (error) {
-                console.error('Error setting prize:', error);
+                console.error('Error setting prize (simulated):', error);
                 settingMessage.textContent = 'Terjadi kesalahan saat mengatur hadiah. Coba lagi.';
                 settingMessage.style.color = '#ff4d4d';
             } finally {
