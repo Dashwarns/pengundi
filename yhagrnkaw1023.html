@@ -38,7 +38,7 @@
             font-size: 1.1em;
             color: #cccccc;
         }
-        input[type="number"], input[type="password"] { /* Tambahkan input type password */
+        input[type="number"], input[type="password"] {
             width: calc(100% - 20px);
             padding: 12px;
             margin-bottom: 20px;
@@ -105,13 +105,13 @@
             margin-top: 20px;
             color: #4CAF50;
         }
-        #authSection { /* Style for the password section */
+        #authSection {
             margin-bottom: 30px;
             padding-bottom: 20px;
             border-bottom: 1px solid #555555;
         }
-        #generateCodeSection { /* Hide by default */
-            display: none;
+        #generateCodeSection {
+            display: none; /* Hidden by default */
         }
     </style>
 </head>
@@ -137,7 +137,13 @@
     </div>
 
     <script>
-        const API_ENDPOINT_URL = '/.netlify/functions/api-handler';
+        // Peringatan Keamanan:
+        // Password yang disimpan langsung di frontend (JavaScript) TIDAK AMAN!
+        // Siapapun dapat melihatnya dengan memeriksa sumber halaman atau developer tools.
+        // Metode yang aman adalah verifikasi password di backend (seperti Netlify Function).
+        const ADMIN_PASSWORD_CLIENTSIDE = "dashwarnstore4"; // GANTI DENGAN PASSWORD ANDA
+
+        const API_ENDPOINT_URL = '/.netlify/functions/api-handler'; // Tetap gunakan ini untuk aksi pembuatan kode
 
         // Elemen-elemen baru untuk otentikasi
         const authSection = document.getElementById('authSection');
@@ -153,55 +159,23 @@
         const messageDisplay = document.getElementById('message');
 
         // Event listener untuk tombol verifikasi password
-        verifyPasswordButton.addEventListener('click', async () => {
+        verifyPasswordButton.addEventListener('click', () => { // Tidak perlu async/await karena tidak ada fetch
             const password = adminPasswordInput.value.trim();
-            authMessage.textContent = '';
-            verifyPasswordButton.disabled = true;
-            adminPasswordInput.disabled = true;
+            authMessage.textContent = ''; // Hapus pesan sebelumnya
 
-            if (!password) {
-                authMessage.textContent = 'Password tidak boleh kosong.';
-                verifyPasswordButton.disabled = false;
-                adminPasswordInput.disabled = false;
-                return;
-            }
-
-            try {
-                const response = await fetch(API_ENDPOINT_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        action: 'verifyPassword', // Aksi baru untuk Netlify Function
-                        password: password
-                    })
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    authMessage.textContent = 'Password berhasil diverifikasi!';
-                    authMessage.style.color = '#4CAF50';
-                    authSection.style.display = 'none'; // Sembunyikan bagian otentikasi
-                    generateCodeSection.style.display = 'block'; // Tampilkan bagian pembuatan kode
-                } else {
-                    authMessage.textContent = 'Password salah. Coba lagi.';
-                    authMessage.style.color = '#ff4d4d';
-                    verifyPasswordButton.disabled = false;
-                    adminPasswordInput.disabled = false;
-                    adminPasswordInput.value = ''; // Kosongkan password
-                }
-            } catch (error) {
-                console.error('Error verifying password:', error);
-                authMessage.textContent = 'Terjadi kesalahan saat verifikasi. Coba lagi.';
+            if (password === ADMIN_PASSWORD_CLIENTSIDE) { // Verifikasi password di frontend
+                authMessage.textContent = 'Password berhasil diverifikasi!';
+                authMessage.style.color = '#4CAF50';
+                authSection.style.display = 'none'; // Sembunyikan bagian otentikasi
+                generateCodeSection.style.display = 'block'; // Tampilkan bagian pembuatan kode
+            } else {
+                authMessage.textContent = 'Password salah. Coba lagi.';
                 authMessage.style.color = '#ff4d4d';
-                verifyPasswordButton.disabled = false;
-                adminPasswordInput.disabled = false;
-                adminPasswordInput.value = '';
+                adminPasswordInput.value = ''; // Kosongkan password
             }
         });
 
+        // Event listener untuk tombol Buat Kode (tetap memanggil Netlify Function)
         generateCodeButton.addEventListener('click', async () => {
             const numCodes = parseInt(numCodesInput.value);
             generatedCodesDiv.innerHTML = '<h2>Kode yang Dihasilkan:</h2>';
@@ -212,13 +186,11 @@
             if (isNaN(numCodes) || numCodes < 1) {
                 messageDisplay.textContent = 'Jumlah kode tidak valid.';
                 messageDisplay.style.color = '#ff4d4d';
-                generateCodeButton.disabled = false; // Aktifkan kembali jika ada error input
+                generateCodeButton.disabled = false;
                 return;
             }
 
             try {
-                // Panggilan fetch diubah untuk menggunakan API_ENDPOINT_URL
-                // Kita tidak perlu mengirim password lagi di sini karena sudah diverifikasi
                 const response = await fetch(API_ENDPOINT_URL, {
                     method: 'POST',
                     headers: {
@@ -250,7 +222,7 @@
                 messageDisplay.textContent = 'Terjadi kesalahan saat membuat kode. Coba lagi.';
                 messageDisplay.style.color = '#ff4d4d';
             } finally {
-                generateCodeButton.disabled = false; // Selalu aktifkan kembali tombol
+                generateCodeButton.disabled = false;
             }
         });
 
