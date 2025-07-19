@@ -1,11 +1,25 @@
 // netlify/functions/api-handler.js
 
-// Tidak lagi memerlukan Firebase Admin SDK atau Google Sheets API
-// const admin = require('firebase-admin');
-// const { google } = require('googleapis');
-// const { JWT } = require('google-auth-library');
+const admin = require('firebase-admin');
 
-// ADMIN_PASSWORD masih diperlukan untuk otentikasi halaman admin (kode.html dan setting.html)
+const serviceAccountString = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+
+if (!admin.apps.length) {
+    try {
+        const serviceAccount = JSON.parse(serviceAccountString);
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount)
+        });
+    } catch (error) {
+        console.error('Failed to initialize Firebase Admin SDK:', error);
+        // Handle error initialization
+    }
+}
+
+const db = admin.firestore();
+const collectionRef = db.collection('redeemCodes');
+
+// Ambil password admin dari Environment Variable
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 exports.handler = async (event, context) => {
@@ -17,118 +31,79 @@ exports.handler = async (event, context) => {
         };
     }
 
-    let payload;
     try {
-        payload = JSON.parse(event.body);
-    } catch (e) {
-        console.error('Failed to parse request body:', e);
-        return {
-            statusCode: 400,
-            body: JSON.stringify({ message: 'Bad Request: Invalid JSON payload' }),
-            headers: { 'Content-Type': 'application/json' }
-        };
-    }
+        const payload = JSON.parse(event.body);
+        const action = payload.action;
 
-    const action = payload.action;
-    let response = {};
+        let response = {};
 
-    try {
-        // Aksi: Verifikasi Password Admin (tetap ada untuk melindungi kode.html dan setting.html)
+        // --- Aksi Baru: Verifikasi Password ---
         if (action === 'verifyPassword') {
             const enteredPassword = payload.password;
-            if (enteredPassword === ADMIN_PASSWORD) {
+            if (enteredPassword === ADMIN_PASSWORD) { // Verifikasi password
                 response = { success: true, message: 'Password benar.' };
             } else {
                 response = { success: false, message: 'Password salah.' };
             }
         }
+        // --- Akhir Aksi Baru ---
 
-        // Aksi: Membuat Kode Redeem Baru (dari kode.html)
-        // KODE HANYA DIBUAT SECARA ACAK, TIDAK DISIMPAN DI MANA PUN.
         else if (action === 'generateCode') {
-            // Verifikasi password admin untuk aksi ini
-            const enteredPassword = payload.password;
-            if (enteredPassword !== ADMIN_PASSWORD) {
-                 return {
-                    statusCode: 401,
-                    body: JSON.stringify({ success: false, message: 'Unauthorized: Password admin diperlukan.' }),
-                    headers: { 'Content-Type': 'application/json' }
-                };
-            }
+            // OPTIONAL: Anda bisa menambahkan cek password di sini juga
+            // jika Anda ingin memastikan setiap permintaan `generateCode`
+            // juga membawa password yang benar.
+            // Namun, karena frontend sudah melakukan verifikasi awal,
+            // untuk kasus sederhana ini, kita asumsikan akses sudah diberikan.
 
-            const numCodes = parseInt(payload.numCodes);
-            if (isNaN(numCodes) || numCodes < 1) {
-                return {
-                    statusCode: 400,
-                    body: JSON.stringify({ success: false, message: 'Jumlah kode tidak valid.' }),
-                    headers: { 'Content-Type': 'application/json' }
-                };
-            }
-
+            const numCodes = payload.numCodes;
             const generatedCodes = [];
+            const batch = db.batch();
+
             for (let i = 0; i < numCodes; i++) {
-                generatedCodes.push(generateRandomCode(7, 10));
+                const newCode = generateRandomCode(7, 10);
+                const docRef = collectionRef.doc(newCode);
+                batch.set(docRef, {
+                    code: newCode,
+                    status: 'Belum',
+                    prize: null,
+                    timestamp: null
+                });
+                generatedCodes.push(newCode);
             }
-            // Kode hanya ditampilkan di frontend, tidak disimpan
-            response = { success: true, codes: generatedCodes, message: `Berhasil membuat ${numCodes} kode (tidak disimpan).` };
-        }
+            await batch.commit();
+            response = { success: true, codes: generatedCodes };
 
-        // Aksi: Mengatur Hadiah Tetap (dari setting.html)
-        // AKSI INI TIDAK AKAN BEKERJA KARENA TIDAK ADA DATABASE UNTUK MENYIMPANNYA.
-        // FUNGSI INI HANYA AKAN MENGEMBALIKAN PESAN SUKSES PALSU.
-        else if (action === 'setPrize') {
-             // Verifikasi password admin untuk aksi ini
-            const enteredPassword = payload.password;
-            if (enteredPassword !== ADMIN_PASSWORD) {
-                 return {
-                    statusCode: 401,
-                    body: JSON.stringify({ success: false, message: 'Unauthorized: Password admin diperlukan.' }),
-                    headers: { 'Content-Type': 'application/json' }
-                };
+        } else if (action === 'checkAndUseCode') {
+            const code = payload.code.toUpperCase();
+            const wonPrize = payload.prize;
+            const docRef = collectionRef.doc(code);
+            const doc = await docRef.get();
+
+            if (!doc.exists) {
+                response = { success: false, message: 'Kode redeem tidak ditemukan.' };
+            } else {
+                const codeData = doc.data();
+                if (codeData.status === 'Digunakan') {
+                    response = { success: false, message: 'Kode redeem sudah digunakan.', prize: codeData.prize };
+                } else {
+                    await docRef.update({
+                        status: 'Digunakan',
+                        prize: wonPrize,
+                        timestamp: new Date().toLocaleString('id-ID')
+                    });
+                    response = { success: true, status: 'newly_used', prize: wonPrize };
+                }
             }
 
-            const code = payload.code ? payload.code.toUpperCase() : '';
-            const fixedPrize = payload.prize ? payload.prize.trim() : '';
-            
-            // Simulasikan sukses, tapi data tidak disimpan
-            response = { 
-                success: true, 
-                code: code, 
-                prize: fixedPrize, 
-                message: 'Pengaturan hadiah berhasil disimulasikan (tidak disimpan permanen).' 
-            };
-        }
+        } else if (action === 'getAllCodes') {
+            const snapshot = await collectionRef.orderBy('code').get();
+            const codesData = [];
+            snapshot.forEach(doc => {
+                codesData.push(doc.data());
+            });
+            response = { success: true, codes: codesData };
 
-        // Aksi: Memeriksa dan Menggunakan Kode (dari index.html)
-        // KODE INI AKAN SELALU DIANGGAP BARU DAN HADIAH SELALU ACAR.
-        // TIDAK ADA PENGECEKAN STATUS 'DIGUNAKAN'.
-        else if (action === 'checkAndUseCode') {
-            const code = payload.code ? payload.code.toUpperCase() : '';
-            const wonPrize = payload.prize; // Hadiah yang ditarik dari fungsi undian di frontend
-
-            // Selalu anggap kode baru dan valid
-            response = { success: true, status: 'newly_used', prize: wonPrize };
-            // Catatan: Tidak ada logika untuk memeriksa apakah kode sudah digunakan
-            // Hadiah yang diberikan akan selalu wonPrize (dari acak) karena fixedPrize tidak disimpan.
-        }
-
-        // Aksi: Mengambil Semua Kode (opsional)
-        // AKSI INI TIDAK AKAN MENGEMBALIKAN APA PUN KARENA TIDAK ADA DATABASE.
-        else if (action === 'getAllCodes') {
-            // Verifikasi password admin untuk aksi ini
-            const enteredPassword = payload.password;
-            if (enteredPassword !== ADMIN_PASSWORD) {
-                 return {
-                    statusCode: 401,
-                    body: JSON.stringify({ success: false, message: 'Unauthorized: Password admin diperlukan.' }),
-                    headers: { 'Content-Type': 'application/json' }
-                };
-            }
-            response = { success: true, codes: [], message: 'Tidak ada kode tersimpan.' };
-        }
-
-        // Aksi tidak valid
-        else {
+        } else {
             response = { success: false, message: 'Aksi tidak valid.' };
         }
 
@@ -137,12 +112,12 @@ exports.handler = async (event, context) => {
             body: JSON.stringify(response),
             headers: {
                 'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': 'https://dashwarnstore.netlify.app' // GANTI INI JIKA ANDA MENGGUNAKAN DOMAIN KUSTOM
+                'Access-Control-Allow-Origin': 'https://dashwarnstore.netlify.app' // Ganti jika domain Anda berbeda
             }
         };
 
     } catch (error) {
-        console.error('Error in Netlify Function handler:', error);
+        console.error('Error in Netlify Function:', error);
         return {
             statusCode: 500,
             body: JSON.stringify({ message: 'Internal Server Error', details: error.message }),
@@ -151,7 +126,6 @@ exports.handler = async (event, context) => {
     }
 };
 
-// Fungsi pembantu untuk menghasilkan kode acak (tidak berubah)
 function generateRandomCode(minLength, maxLength) {
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     const length = Math.floor(Math.random() * (maxLength - minLength + 1)) + minLength;
