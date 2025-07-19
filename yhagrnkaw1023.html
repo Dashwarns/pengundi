@@ -38,7 +38,7 @@
             font-size: 1.1em;
             color: #cccccc;
         }
-        input[type="number"] {
+        input[type="number"], input[type="password"] {
             width: calc(100% - 20px);
             padding: 12px;
             margin-bottom: 20px;
@@ -61,8 +61,12 @@
             font-weight: bold;
             margin-top: 10px;
         }
-        button:hover {
+        button:hover:not(:disabled) {
             background-color: #7B68EE;
+        }
+        button:disabled {
+            background-color: #555555;
+            cursor: not-allowed;
         }
         #generatedCodes {
             margin-top: 30px;
@@ -101,38 +105,88 @@
             margin-top: 20px;
             color: #4CAF50;
         }
+        #authSection {
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #555555;
+        }
+        #generateCodeSection {
+            display: none; /* Hidden by default */
+        }
     </style>
 </head>
 <body>
     <h1>DashwarnStore - Buat Kode Redeem</h1>
     <div class="container">
-        <label for="numCodes">Jumlah Kode:</label>
-        <input type="number" id="numCodes" value="1" min="1">
-        <button id="generateCodeButton">Buat Kode</button>
-        <div id="message"></div>
-        <div id="generatedCodes">
-            <h2>Kode yang Dihasilkan:</h2>
+        <div id="authSection">
+            <label for="adminPassword">Password Admin:</label>
+            <input type="password" id="adminPassword" placeholder="Masukkan password admin">
+            <button id="verifyPasswordButton">Verifikasi</button>
+            <div id="authMessage" class="message" style="color: #ff4d4d;"></div>
+        </div>
+
+        <div id="generateCodeSection">
+            <label for="numCodes">Jumlah Kode:</label>
+            <input type="number" id="numCodes" value="1" min="1">
+            <button id="generateCodeButton">Buat Kode</button>
+            <div id="message"></div>
+            <div id="generatedCodes">
+                <h2>Kode yang Dihasilkan:</h2>
+            </div>
         </div>
     </div>
 
     <script>
-        // Panggil Netlify Function, bukan Apps Script langsung
-        const API_ENDPOINT_URL = '/.netlify/functions/api-handler';
+        // Peringatan Keamanan:
+        // Password yang disimpan langsung di frontend (JavaScript) TIDAK AMAN!
+        // Siapapun dapat melihatnya dengan memeriksa sumber halaman atau developer tools.
+        // Metode yang aman adalah verifikasi password di backend (seperti Netlify Function).
+        const ADMIN_PASSWORD_CLIENTSIDE = "dashwarnstore4"; // GANTI DENGAN PASSWORD ANDA
 
+        const API_ENDPOINT_URL = '/.netlify/functions/api-handler'; // Tetap gunakan ini untuk aksi pembuatan kode
+
+        // Elemen-elemen baru untuk otentikasi
+        const authSection = document.getElementById('authSection');
+        const adminPasswordInput = document.getElementById('adminPassword');
+        const verifyPasswordButton = document.getElementById('verifyPasswordButton');
+        const authMessage = document.getElementById('authMessage');
+
+        // Elemen-elemen yang sudah ada
+        const generateCodeSection = document.getElementById('generateCodeSection');
         const generateCodeButton = document.getElementById('generateCodeButton');
         const numCodesInput = document.getElementById('numCodes');
         const generatedCodesDiv = document.getElementById('generatedCodes');
         const messageDisplay = document.getElementById('message');
 
+        // Event listener untuk tombol verifikasi password
+        verifyPasswordButton.addEventListener('click', () => { // Tidak perlu async/await karena tidak ada fetch
+            const password = adminPasswordInput.value.trim();
+            authMessage.textContent = ''; // Hapus pesan sebelumnya
+
+            if (password === ADMIN_PASSWORD_CLIENTSIDE) { // Verifikasi password di frontend
+                authMessage.textContent = 'Password berhasil diverifikasi!';
+                authMessage.style.color = '#4CAF50';
+                authSection.style.display = 'none'; // Sembunyikan bagian otentikasi
+                generateCodeSection.style.display = 'block'; // Tampilkan bagian pembuatan kode
+            } else {
+                authMessage.textContent = 'Password salah. Coba lagi.';
+                authMessage.style.color = '#ff4d4d';
+                adminPasswordInput.value = ''; // Kosongkan password
+            }
+        });
+
+        // Event listener untuk tombol Buat Kode (tetap memanggil Netlify Function)
         generateCodeButton.addEventListener('click', async () => {
             const numCodes = parseInt(numCodesInput.value);
             generatedCodesDiv.innerHTML = '<h2>Kode yang Dihasilkan:</h2>';
             messageDisplay.textContent = 'Membuat kode...';
             messageDisplay.style.color = '#cccccc';
+            generateCodeButton.disabled = true; // Nonaktifkan tombol saat proses
 
             if (isNaN(numCodes) || numCodes < 1) {
                 messageDisplay.textContent = 'Jumlah kode tidak valid.';
                 messageDisplay.style.color = '#ff4d4d';
+                generateCodeButton.disabled = false;
                 return;
             }
 
@@ -167,6 +221,8 @@
                 console.error('Error:', error);
                 messageDisplay.textContent = 'Terjadi kesalahan saat membuat kode. Coba lagi.';
                 messageDisplay.style.color = '#ff4d4d';
+            } finally {
+                generateCodeButton.disabled = false;
             }
         });
 
