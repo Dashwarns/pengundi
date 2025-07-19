@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DashwarnStore - Pengaturan Hadiah Kode Redeem</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #333333;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+        }
+        h1 {
+            color: #9370DB;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            color: #cccccc;
+        }
+        input[type="text"], input[type="password"] {
+            width: calc(100% - 20px);
+            padding: 12px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            border: 1px solid #555555;
+            background-color: #444444;
+            color: #ffffff;
+            font-size: 1em;
+        }
+        button {
+            background-color: #9370DB;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            text-transform: uppercase;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        button:hover:not(:disabled) {
+            background-color: #7B68EE;
+        }
+        button:disabled {
+            background-color: #555555;
+            cursor: not-allowed;
+        }
+        .message {
+            margin-top: 20px;
+            font-size: 1.1em;
+            color: #ff4d4d; /* Merah untuk error */
+        }
+        #authSection {
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #555555;
+        }
+        #settingSection {
+            display: none; /* Hidden by default */
+        }
+    </style>
+</head>
+<body>
+    <h1>Pengaturan Hadiah Kode Redeem</h1>
+    <div class="container">
+        <div id="authSection">
+            <label for="adminPassword">Password Admin:</label>
+            <input type="password" id="adminPassword" placeholder="Masukkan password admin">
+            <button id="verifyPasswordButton">Verifikasi</button>
+            <div id="authMessage" class="message" style="color: #ff4d4d;"></div>
+        </div>
+
+        <div id="settingSection">
+            <p>Gunakan format: <strong>(Kode) (Hadiah)</strong></p>
+            <label for="codeInput">Kode Redeem:</label>
+            <input type="text" id="codeInput" placeholder="Contoh: ABCXYZ">
+
+            <label for="prizeInput">Hadiah yang Diinginkan:</label>
+            <input type="text" id="prizeInput" placeholder="Contoh: Girafa Emas">
+
+            <button id="setPrizeButton">Set Hadiah</button>
+            <div id="settingMessage" class="message"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_ENDPOINT_URL = '/.netlify/functions/api-handler';
+
+        // Elemen otentikasi
+        const authSection = document.getElementById('authSection');
+        const adminPasswordInput = document.getElementById('adminPassword');
+        const verifyPasswordButton = document.getElementById('verifyPasswordButton');
+        const authMessage = document.getElementById('authMessage');
+
+        // Elemen pengaturan hadiah
+        const settingSection = document.getElementById('settingSection');
+        const codeInput = document.getElementById('codeInput');
+        const prizeInput = document.getElementById('prizeInput');
+        const setPrizeButton = document.getElementById('setPrizeButton');
+        const settingMessage = document.getElementById('settingMessage');
+
+        // Event listener untuk tombol verifikasi password
+        verifyPasswordButton.addEventListener('click', async () => {
+            const password = adminPasswordInput.value.trim();
+            authMessage.textContent = '';
+            verifyPasswordButton.disabled = true;
+            adminPasswordInput.disabled = true;
+
+            if (!password) {
+                authMessage.textContent = 'Password tidak boleh kosong.';
+                verifyPasswordButton.disabled = false;
+                adminPasswordInput.disabled = false;
+                return;
+            }
+
+            try {
+                const response = await fetch(API_ENDPOINT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'verifyPassword',
+                        password: password
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    authMessage.textContent = 'Password berhasil diverifikasi!';
+                    authMessage.style.color = '#4CAF50';
+                    authSection.style.display = 'none'; // Sembunyikan auth
+                    settingSection.style.display = 'block'; // Tampilkan pengaturan
+                } else {
+                    authMessage.textContent = 'Password salah. Coba lagi.';
+                    authMessage.style.color = '#ff4d4d';
+                    verifyPasswordButton.disabled = false;
+                    adminPasswordInput.disabled = false;
+                    adminPasswordInput.value = ''; // Kosongkan password
+                }
+            } catch (error) {
+                console.error('Error verifying password:', error);
+                authMessage.textContent = 'Terjadi kesalahan saat verifikasi. Coba lagi.';
+                authMessage.style.color = '#ff4d4d';
+                verifyPasswordButton.disabled = false;
+                adminPasswordInput.disabled = false;
+                adminPasswordInput.value = '';
+            }
+        });
+
+        // Event listener untuk tombol Set Hadiah
+        setPrizeButton.addEventListener('click', async () => {
+            const code = codeInput.value.trim().toUpperCase();
+            const prize = prizeInput.value.trim();
+            settingMessage.textContent = '';
+            setPrizeButton.disabled = true;
+
+            if (!code || !prize) {
+                settingMessage.textContent = 'Kode dan Hadiah tidak boleh kosong.';
+                settingMessage.style.color = '#ff4d4d';
+                setPrizeButton.disabled = false;
+                return;
+            }
+
+            settingMessage.textContent = 'Mengatur hadiah...';
+            settingMessage.style.color = '#cccccc';
+
+            try {
+                const response = await fetch(API_ENDPOINT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'setPrize', // Aksi baru untuk Netlify Function
+                        code: code,
+                        prize: prize
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    settingMessage.textContent = `Berhasil mengatur hadiah "${result.prize}" untuk kode "${result.code}".`;
+                    settingMessage.style.color = '#4CAF50';
+                    codeInput.value = '';
+                    prizeInput.value = '';
+                } else {
+                    settingMessage.textContent = 'Gagal mengatur hadiah: ' + result.message;
+                    settingMessage.style.color = '#ff4d4d';
+                }
+            } catch (error) {
+                console.error('Error setting prize:', error);
+                settingMessage.textContent = 'Terjadi kesalahan saat mengatur hadiah. Coba lagi.';
+                settingMessage.style.color = '#ff4d4d';
+            } finally {
+                setPrizeButton.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
