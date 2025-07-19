@@ -38,7 +38,7 @@
             font-size: 1.1em;
             color: #cccccc;
         }
-        input[type="number"], input[type="password"] {
+        input[type="number"], input[type="password"] { /* Tambahkan input type password */
             width: calc(100% - 20px);
             padding: 12px;
             margin-bottom: 20px;
@@ -68,40 +68,55 @@
             background-color: #555555;
             cursor: not-allowed;
         }
-        .message {
-            margin-top: 20px;
-            font-size: 1.1em;
-            color: #ff4d4d; /* Merah untuk error */
+        #generatedCodes {
+            margin-top: 30px;
+            text-align: left;
+            border-top: 1px solid #555555;
+            padding-top: 20px;
         }
-        #authSection {
+        .code-item {
+            background-color: #444444;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .code-item span {
+            flex-grow: 1;
+            word-break: break-all;
+        }
+        .copy-button {
+            background-color: #555555;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9em;
+            margin-left: 10px;
+            transition: background-color 0.3s ease;
+        }
+        .copy-button:hover {
+            background-color: #777777;
+        }
+        #message {
+            margin-top: 20px;
+            color: #4CAF50;
+        }
+        #authSection { /* Style for the password section */
             margin-bottom: 30px;
             padding-bottom: 20px;
             border-bottom: 1px solid #555555;
         }
-        #generateSection {
-            display: none; /* Hidden by default */
-        }
-        #codeList {
-            margin-top: 20px;
-            text-align: left;
-            word-wrap: break-word; /* Memastikan teks tidak keluar batas */
-            max-height: 300px; /* Batasi tinggi untuk scroll */
-            overflow-y: auto; /* Aktifkan scroll vertikal */
-            border: 1px solid #555555;
-            padding: 10px;
-            border-radius: 5px;
-            background-color: #444444;
-        }
-        #codeList p {
-            margin: 5px 0;
-            padding: 5px;
-            background-color: #555555;
-            border-radius: 3px;
+        #generateCodeSection { /* Hide by default */
+            display: none;
         }
     </style>
 </head>
 <body>
-    <h1>Buat Kode Redeem</h1>
+    <h1>DashwarnStore - Buat Kode Redeem</h1>
     <div class="container">
         <div id="authSection">
             <label for="adminPassword">Password Admin:</label>
@@ -110,34 +125,32 @@
             <div id="authMessage" class="message" style="color: #ff4d4d;"></div>
         </div>
 
-        <div id="generateSection">
-            <label for="numCodes">Jumlah Kode yang Dibuat:</label>
-            <input type="number" id="numCodes" value="1" min="1" max="100">
-
-            <button id="generateButton">Buat Kode</button>
-            <div id="generateMessage" class="message"></div>
-            <div id="codeList">
-                </div>
+        <div id="generateCodeSection">
+            <label for="numCodes">Jumlah Kode:</label>
+            <input type="number" id="numCodes" value="1" min="1">
+            <button id="generateCodeButton">Buat Kode</button>
+            <div id="message"></div>
+            <div id="generatedCodes">
+                <h2>Kode yang Dihasilkan:</h2>
+            </div>
         </div>
     </div>
 
     <script>
-        const API_ENDPOINT_URL = '/.netlify/functions/api-handler'; // URL ke Netlify Function Anda
+        const API_ENDPOINT_URL = '/.netlify/functions/api-handler';
 
-        // Elemen otentikasi
+        // Elemen-elemen baru untuk otentikasi
         const authSection = document.getElementById('authSection');
         const adminPasswordInput = document.getElementById('adminPassword');
         const verifyPasswordButton = document.getElementById('verifyPasswordButton');
         const authMessage = document.getElementById('authMessage');
 
-        // Elemen pembuatan kode
-        const generateSection = document.getElementById('generateSection');
+        // Elemen-elemen yang sudah ada
+        const generateCodeSection = document.getElementById('generateCodeSection');
+        const generateCodeButton = document.getElementById('generateCodeButton');
         const numCodesInput = document.getElementById('numCodes');
-        const generateButton = document.getElementById('generateButton');
-        const generateMessage = document.getElementById('generateMessage');
-        const codeList = document.getElementById('codeList');
-
-        let verifiedAdminPassword = ''; // Untuk menyimpan password yang sudah diverifikasi
+        const generatedCodesDiv = document.getElementById('generatedCodes');
+        const messageDisplay = document.getElementById('message');
 
         // Event listener untuk tombol verifikasi password
         verifyPasswordButton.addEventListener('click', async () => {
@@ -156,8 +169,13 @@
             try {
                 const response = await fetch(API_ENDPOINT_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'verifyPassword', password: password })
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'verifyPassword', // Aksi baru untuk Netlify Function
+                        password: password
+                    })
                 });
 
                 const result = await response.json();
@@ -165,15 +183,14 @@
                 if (result.success) {
                     authMessage.textContent = 'Password berhasil diverifikasi!';
                     authMessage.style.color = '#4CAF50';
-                    verifiedAdminPassword = password; // Simpan password yang berhasil
-                    authSection.style.display = 'none';
-                    generateSection.style.display = 'block';
+                    authSection.style.display = 'none'; // Sembunyikan bagian otentikasi
+                    generateCodeSection.style.display = 'block'; // Tampilkan bagian pembuatan kode
                 } else {
                     authMessage.textContent = 'Password salah. Coba lagi.';
                     authMessage.style.color = '#ff4d4d';
                     verifyPasswordButton.disabled = false;
                     adminPasswordInput.disabled = false;
-                    adminPasswordInput.value = '';
+                    adminPasswordInput.value = ''; // Kosongkan password
                 }
             } catch (error) {
                 console.error('Error verifying password:', error);
@@ -185,54 +202,69 @@
             }
         });
 
-        // Event listener untuk tombol Buat Kode
-        generateButton.addEventListener('click', async () => {
+        generateCodeButton.addEventListener('click', async () => {
             const numCodes = parseInt(numCodesInput.value);
-            generateMessage.textContent = '';
-            codeList.innerHTML = ''; // Kosongkan daftar kode sebelumnya
-            generateButton.disabled = true;
+            generatedCodesDiv.innerHTML = '<h2>Kode yang Dihasilkan:</h2>';
+            messageDisplay.textContent = 'Membuat kode...';
+            messageDisplay.style.color = '#cccccc';
+            generateCodeButton.disabled = true; // Nonaktifkan tombol saat proses
 
-            if (isNaN(numCodes) || numCodes < 1 || numCodes > 100) {
-                generateMessage.textContent = 'Jumlah kode harus antara 1 dan 100.';
-                generateMessage.style.color = '#ff4d4d';
-                generateButton.disabled = false;
+            if (isNaN(numCodes) || numCodes < 1) {
+                messageDisplay.textContent = 'Jumlah kode tidak valid.';
+                messageDisplay.style.color = '#ff4d4d';
+                generateCodeButton.disabled = false; // Aktifkan kembali jika ada error input
                 return;
             }
 
-            generateMessage.textContent = 'Membuat kode...';
-            generateMessage.style.color = '#cccccc';
-
             try {
+                // Panggilan fetch diubah untuk menggunakan API_ENDPOINT_URL
+                // Kita tidak perlu mengirim password lagi di sini karena sudah diverifikasi
                 const response = await fetch(API_ENDPOINT_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
                     body: JSON.stringify({
                         action: 'generateCode',
-                        numCodes: numCodes,
-                        password: verifiedAdminPassword // Kirim password untuk verifikasi backend
+                        numCodes: numCodes
                     })
                 });
 
                 const result = await response.json();
 
                 if (result.success) {
-                    generateMessage.textContent = result.message + ' (Tidak disimpan permanen).';
-                    generateMessage.style.color = '#4CAF50';
-                    result.codes.forEach(code => {
-                        const p = document.createElement('p');
-                        p.textContent = code;
-                        codeList.appendChild(p);
+                    result.codes.forEach(newCode => {
+                        const codeItem = document.createElement('div');
+                        codeItem.classList.add('code-item');
+                        codeItem.innerHTML = `<span>${newCode}</span><button class="copy-button" data-code="${newCode}">Salin</button>`;
+                        generatedCodesDiv.appendChild(codeItem);
                     });
+                    messageDisplay.textContent = `Berhasil membuat ${numCodes} kode baru.`;
+                    messageDisplay.style.color = '#4CAF50';
                 } else {
-                    generateMessage.textContent = 'Gagal membuat kode: ' + result.message;
-                    generateMessage.style.color = '#ff4d4d';
+                    messageDisplay.textContent = 'Gagal membuat kode: ' + result.message;
+                    messageDisplay.style.color = '#ff4d4d';
                 }
             } catch (error) {
-                console.error('Error generating codes:', error);
-                generateMessage.textContent = 'Terjadi kesalahan saat membuat kode. Coba lagi.';
-                generateMessage.style.color = '#ff4d4d';
+                console.error('Error:', error);
+                messageDisplay.textContent = 'Terjadi kesalahan saat membuat kode. Coba lagi.';
+                messageDisplay.style.color = '#ff4d4d';
             } finally {
-                generateButton.disabled = false;
+                generateCodeButton.disabled = false; // Selalu aktifkan kembali tombol
+            }
+        });
+
+        generatedCodesDiv.addEventListener('click', (event) => {
+            if (event.target.classList.contains('copy-button')) {
+                const codeToCopy = event.target.dataset.code;
+                navigator.clipboard.writeText(codeToCopy).then(() => {
+                    event.target.textContent = 'Disalin!';
+                    setTimeout(() => {
+                        event.target.textContent = 'Salin';
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Gagal menyalin:', err);
+                });
             }
         });
     </script>
