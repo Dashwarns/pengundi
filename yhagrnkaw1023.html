@@ -38,7 +38,7 @@
             font-size: 1.1em;
             color: #cccccc;
         }
-        input[type="number"], input[type="password"] {
+        input[type="number"], input[type="password"] { /* Tambahkan input type password */
             width: calc(100% - 20px);
             padding: 12px;
             margin-bottom: 20px;
@@ -105,12 +105,12 @@
             margin-top: 20px;
             color: #4CAF50;
         }
-        #authSection {
+        #authSection { /* Style for the password section */
             margin-bottom: 30px;
             padding-bottom: 20px;
             border-bottom: 1px solid #555555;
         }
-        #generateCodeSection {
+        #generateCodeSection { /* Hide by default */
             display: none;
         }
     </style>
@@ -139,17 +139,20 @@
     <script>
         const API_ENDPOINT_URL = '/.netlify/functions/api-handler';
 
+        // Elemen-elemen baru untuk otentikasi
         const authSection = document.getElementById('authSection');
         const adminPasswordInput = document.getElementById('adminPassword');
         const verifyPasswordButton = document.getElementById('verifyPasswordButton');
         const authMessage = document.getElementById('authMessage');
 
+        // Elemen-elemen yang sudah ada
         const generateCodeSection = document.getElementById('generateCodeSection');
         const generateCodeButton = document.getElementById('generateCodeButton');
         const numCodesInput = document.getElementById('numCodes');
         const generatedCodesDiv = document.getElementById('generatedCodes');
         const messageDisplay = document.getElementById('message');
 
+        // Event listener untuk tombol verifikasi password
         verifyPasswordButton.addEventListener('click', async () => {
             const password = adminPasswordInput.value.trim();
             authMessage.textContent = '';
@@ -166,9 +169,11 @@
             try {
                 const response = await fetch(API_ENDPOINT_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
                     body: JSON.stringify({
-                        action: 'verifyPassword',
+                        action: 'verifyPassword', // Aksi baru untuk Netlify Function
                         password: password
                     })
                 });
@@ -176,20 +181,20 @@
                 const result = await response.json();
 
                 if (result.success) {
-                    authMessage.textContent = 'Password berhasil diverifikasi! ✅';
+                    authMessage.textContent = 'Password berhasil diverifikasi!';
                     authMessage.style.color = '#4CAF50';
-                    authSection.style.display = 'none';
-                    generateCodeSection.style.display = 'block';
+                    authSection.style.display = 'none'; // Sembunyikan bagian otentikasi
+                    generateCodeSection.style.display = 'block'; // Tampilkan bagian pembuatan kode
                 } else {
-                    authMessage.textContent = 'Password salah. Coba lagi. ❌';
+                    authMessage.textContent = 'Password salah. Coba lagi.';
                     authMessage.style.color = '#ff4d4d';
                     verifyPasswordButton.disabled = false;
                     adminPasswordInput.disabled = false;
-                    adminPasswordInput.value = '';
+                    adminPasswordInput.value = ''; // Kosongkan password
                 }
             } catch (error) {
                 console.error('Error verifying password:', error);
-                authMessage.textContent = 'Terjadi kesalahan saat verifikasi. Coba lagi. ⚠️';
+                authMessage.textContent = 'Terjadi kesalahan saat verifikasi. Coba lagi.';
                 authMessage.style.color = '#ff4d4d';
                 verifyPasswordButton.disabled = false;
                 adminPasswordInput.disabled = false;
@@ -202,23 +207,26 @@
             generatedCodesDiv.innerHTML = '<h2>Kode yang Dihasilkan:</h2>';
             messageDisplay.textContent = 'Membuat kode...';
             messageDisplay.style.color = '#cccccc';
-            generateCodeButton.disabled = true;
+            generateCodeButton.disabled = true; // Nonaktifkan tombol saat proses
 
             if (isNaN(numCodes) || numCodes < 1) {
                 messageDisplay.textContent = 'Jumlah kode tidak valid.';
                 messageDisplay.style.color = '#ff4d4d';
-                generateCodeButton.disabled = false;
+                generateCodeButton.disabled = false; // Aktifkan kembali jika ada error input
                 return;
             }
 
             try {
+                // Panggilan fetch diubah untuk menggunakan API_ENDPOINT_URL
+                // Kita tidak perlu mengirim password lagi di sini karena sudah diverifikasi
                 const response = await fetch(API_ENDPOINT_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
                     body: JSON.stringify({
                         action: 'generateCode',
-                        numCodes: numCodes,
-                        adminPassword: adminPasswordInput.value // Kirim password admin
+                        numCodes: numCodes
                     })
                 });
 
@@ -231,18 +239,18 @@
                         codeItem.innerHTML = `<span>${newCode}</span><button class="copy-button" data-code="${newCode}">Salin</button>`;
                         generatedCodesDiv.appendChild(codeItem);
                     });
-                    messageDisplay.textContent = `Berhasil membuat ${numCodes} kode baru. ✅`;
+                    messageDisplay.textContent = `Berhasil membuat ${numCodes} kode baru.`;
                     messageDisplay.style.color = '#4CAF50';
                 } else {
-                    messageDisplay.textContent = 'Gagal membuat kode: ' + result.message + ' ❌';
+                    messageDisplay.textContent = 'Gagal membuat kode: ' + result.message;
                     messageDisplay.style.color = '#ff4d4d';
                 }
             } catch (error) {
                 console.error('Error:', error);
-                messageDisplay.textContent = 'Terjadi kesalahan saat membuat kode. Coba lagi. ⚠️';
+                messageDisplay.textContent = 'Terjadi kesalahan saat membuat kode. Coba lagi.';
                 messageDisplay.style.color = '#ff4d4d';
             } finally {
-                generateCodeButton.disabled = false;
+                generateCodeButton.disabled = false; // Selalu aktifkan kembali tombol
             }
         });
 
@@ -250,7 +258,7 @@
             if (event.target.classList.contains('copy-button')) {
                 const codeToCopy = event.target.dataset.code;
                 navigator.clipboard.writeText(codeToCopy).then(() => {
-                    event.target.textContent = 'Disalin! ✅';
+                    event.target.textContent = 'Disalin!';
                     setTimeout(() => {
                         event.target.textContent = 'Salin';
                     }, 2000);
