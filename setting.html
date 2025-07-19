@@ -107,9 +107,7 @@
     </div>
 
     <script>
-        alert('Script setting.html dimuat!'); // <--- BARIS DEBUGGING (HAPUS SETELAH SELESAI!)
-
-        const API_ENDPOINT_URL = '/.netlify/functions/api-handler';
+        const API_ENDPOINT_URL = '/.netlify/functions/api-handler'; // URL ke Netlify Function Anda
 
         // Elemen otentikasi
         const authSection = document.getElementById('authSection');
@@ -197,14 +195,14 @@
                         action: 'setPrize',
                         code: code,
                         prize: prize,
-                        password: verifiedAdminPassword
+                        password: verifiedAdminPassword // Kirim password untuk verifikasi backend
                     })
                 });
 
                 const result = await response.json();
 
                 if (result.success) {
-                    settingMessage.textContent = result.message;
+                    settingMessage.textContent = result.message; // Akan menampilkan pesan simulasi
                     settingMessage.style.color = '#4CAF50';
                     codeInput.value = '';
                     prizeInput.value = '';
