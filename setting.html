@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DashwarnStore - Pengaturan Hadiah Kode Redeem</title>
+    <title>DashwarnStore - Pengaturan Hadiah</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -37,9 +37,10 @@
             margin-bottom: 10px;
             font-size: 1.1em;
             color: #cccccc;
+            text-align: left;
         }
         input[type="text"], input[type="password"] {
-            width: calc(100% - 20px);
+            width: calc(100% - 24px);
             padding: 12px;
             margin-bottom: 20px;
             border-radius: 5px;
@@ -71,20 +72,65 @@
         .message {
             margin-top: 20px;
             font-size: 1.1em;
-            color: #ff4d4d; /* Merah untuk error */
+            color: #ff4d4d;
         }
         #authSection {
             margin-bottom: 30px;
             padding-bottom: 20px;
             border-bottom: 1px solid #555555;
         }
-        #settingSection {
-            display: none; /* Hidden by default */
+        #prizeSettingSection {
+            display: none;
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        #allCodesList {
+            margin-top: 30px;
+            border-top: 1px solid #555555;
+            padding-top: 20px;
+            text-align: left;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .code-entry {
+            background-color: #444444;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.95em;
+        }
+        .code-entry .status-used {
+            color: #ffcc00;
+            font-weight: bold;
+        }
+        .code-entry .status-unused {
+            color: #00ff00;
+        }
+        .code-entry .prize-value {
+            color: #ADD8E6;
+        }
+        .code-entry .copy-link {
+            background-color: #555555;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8em;
+            margin-left: 10px;
+            transition: background-color 0.3s ease;
+        }
+        .code-entry .copy-link:hover {
+            background-color: #777777;
         }
     </style>
 </head>
 <body>
-    <h1>Pengaturan Hadiah Kode Redeem</h1>
+    <h1>DashwarnStore - Pengaturan Hadiah</h1>
     <div class="container">
         <div id="authSection">
             <label for="adminPassword">Password Admin:</label>
@@ -93,38 +139,45 @@
             <div id="authMessage" class="message" style="color: #ff4d4d;"></div>
         </div>
 
-        <div id="settingSection">
-            <p><strong>Catatan:</strong> Fitur ini hanya untuk simulasi dan tidak menyimpan pengaturan hadiah permanen.</p>
-            <label for="codeInput">Kode Redeem:</label>
-            <input type="text" id="codeInput" placeholder="Contoh: ABCXYZ">
+        <div id="prizeSettingSection">
+            <h2>Atur Hadiah Kode</h2>
+            <div class="input-group">
+                <label for="setCodeInput">Kode Redeem:</label>
+                <input type="text" id="setCodeInput" placeholder="Masukkan kode yang akan diatur">
+            </div>
+            <div class="input-group">
+                <label for="setPrizeInput">Nama Hadiah:</label>
+                <input type="text" id="setPrizeInput" placeholder="Masukkan nama hadiah (contoh: Girafa)">
+            </div>
+            <button id="setPrizeButton">Atur Hadiah</button>
+            <div id="setMessage" class="message"></div>
 
-            <label for="prizeInput">Hadiah yang Diinginkan:</label>
-            <input type="text" id="prizeInput" placeholder="Contoh: Girafa Emas">
+            <hr>
 
-            <button id="setPrizeButton">Set Hadiah (Simulasi)</button>
-            <div id="settingMessage" class="message"></div>
+            <h2>Daftar Semua Kode</h2>
+            <button id="refreshCodesButton">Refresh Daftar Kode</button>
+            <div id="allCodesList">
+                <p style="text-align: center; color: #cccccc;">Tekan "Refresh Daftar Kode" untuk melihat.</p>
+            </div>
         </div>
     </div>
 
     <script>
-        const API_ENDPOINT_URL = '/.netlify/functions/api-handler'; // URL ke Netlify Function Anda
+        const API_ENDPOINT_URL = '/.netlify/functions/api-handler';
 
-        // Elemen otentikasi
         const authSection = document.getElementById('authSection');
         const adminPasswordInput = document.getElementById('adminPassword');
         const verifyPasswordButton = document.getElementById('verifyPasswordButton');
         const authMessage = document.getElementById('authMessage');
 
-        // Elemen pengaturan hadiah
-        const settingSection = document.getElementById('settingSection');
-        const codeInput = document.getElementById('codeInput');
-        const prizeInput = document.getElementById('prizeInput');
+        const prizeSettingSection = document.getElementById('prizeSettingSection');
+        const setCodeInput = document.getElementById('setCodeInput');
+        const setPrizeInput = document.getElementById('setPrizeInput');
         const setPrizeButton = document.getElementById('setPrizeButton');
-        const settingMessage = document.getElementById('settingMessage');
+        const setMessage = document.getElementById('setMessage');
+        const refreshCodesButton = document.getElementById('refreshCodesButton');
+        const allCodesList = document.getElementById('allCodesList');
 
-        let verifiedAdminPassword = ''; // Untuk menyimpan password yang sudah diverifikasi
-
-        // Event listener untuk tombol verifikasi password
         verifyPasswordButton.addEventListener('click', async () => {
             const password = adminPasswordInput.value.trim();
             authMessage.textContent = '';
@@ -144,17 +197,16 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'verifyPassword', password: password })
                 });
-
                 const result = await response.json();
 
                 if (result.success) {
-                    authMessage.textContent = 'Password berhasil diverifikasi!';
+                    authMessage.textContent = 'Password berhasil diverifikasi! ✅';
                     authMessage.style.color = '#4CAF50';
-                    verifiedAdminPassword = password; // Simpan password yang berhasil
                     authSection.style.display = 'none';
-                    settingSection.style.display = 'block';
+                    prizeSettingSection.style.display = 'block';
+                    await fetchAllCodes();
                 } else {
-                    authMessage.textContent = 'Password salah. Coba lagi.';
+                    authMessage.textContent = 'Password salah. Coba lagi. ❌';
                     authMessage.style.color = '#ff4d4d';
                     verifyPasswordButton.disabled = false;
                     adminPasswordInput.disabled = false;
@@ -162,7 +214,7 @@
                 }
             } catch (error) {
                 console.error('Error verifying password:', error);
-                authMessage.textContent = 'Terjadi kesalahan saat verifikasi. Coba lagi.';
+                authMessage.textContent = 'Terjadi kesalahan saat verifikasi. Coba lagi. ⚠️';
                 authMessage.style.color = '#ff4d4d';
                 verifyPasswordButton.disabled = false;
                 adminPasswordInput.disabled = false;
@@ -170,22 +222,18 @@
             }
         });
 
-        // Event listener untuk tombol Set Hadiah
         setPrizeButton.addEventListener('click', async () => {
-            const code = codeInput.value.trim().toUpperCase();
-            const prize = prizeInput.value.trim();
-            settingMessage.textContent = '';
+            const code = setCodeInput.value.trim().toUpperCase();
+            const prize = setPrizeInput.value.trim();
+            setMessage.textContent = '';
             setPrizeButton.disabled = true;
 
             if (!code || !prize) {
-                settingMessage.textContent = 'Kode dan Hadiah tidak boleh kosong.';
-                settingMessage.style.color = '#ff4d4d';
+                setMessage.textContent = 'Kode dan Nama Hadiah tidak boleh kosong. ⚠️';
+                setMessage.style.color = '#ff4d4d';
                 setPrizeButton.disabled = false;
                 return;
             }
-
-            settingMessage.textContent = 'Mengatur hadiah (simulasi)...';
-            settingMessage.style.color = '#cccccc';
 
             try {
                 const response = await fetch(API_ENDPOINT_URL, {
@@ -195,27 +243,91 @@
                         action: 'setPrize',
                         code: code,
                         prize: prize,
-                        password: verifiedAdminPassword // Kirim password untuk verifikasi backend
+                        adminPassword: adminPasswordInput.value
                     })
                 });
-
                 const result = await response.json();
 
                 if (result.success) {
-                    settingMessage.textContent = result.message; // Akan menampilkan pesan simulasi
-                    settingMessage.style.color = '#4CAF50';
-                    codeInput.value = '';
-                    prizeInput.value = '';
+                    setMessage.textContent = `Hadiah untuk kode ${code} berhasil diatur menjadi "${prize}". ✅`;
+                    setMessage.style.color = '#4CAF50';
+                    setCodeInput.value = '';
+                    setPrizeInput.value = '';
+                    await fetchAllCodes();
                 } else {
-                    settingMessage.textContent = 'Gagal mengatur hadiah (simulasi): ' + result.message;
-                    settingMessage.style.color = '#ff4d4d';
+                    setMessage.textContent = `Gagal mengatur hadiah: ${result.message} ❌`;
+                    setMessage.style.color = '#ff4d4d';
                 }
             } catch (error) {
-                console.error('Error setting prize (simulated):', error);
-                settingMessage.textContent = 'Terjadi kesalahan saat mengatur hadiah. Coba lagi.';
-                settingMessage.style.color = '#ff4d4d';
+                console.error('Error setting prize:', error);
+                setMessage.textContent = 'Terjadi kesalahan saat mengatur hadiah. Coba lagi. ⚠️';
+                setMessage.style.color = '#ff4d4d';
             } finally {
                 setPrizeButton.disabled = false;
+            }
+        });
+
+        refreshCodesButton.addEventListener('click', fetchAllCodes);
+
+        async function fetchAllCodes() {
+            allCodesList.innerHTML = '<p style="text-align: center; color: #cccccc;">Memuat data...</p>';
+            try {
+                const response = await fetch(API_ENDPOINT_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'getAllCodes',
+                        adminPassword: adminPasswordInput.value
+                    })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    allCodesList.innerHTML = '<h3>Daftar Kode Redeem:</h3>';
+                    if (result.codes && result.codes.length > 0) {
+                        result.codes.sort((a, b) => a.code.localeCompare(b.code));
+                        result.codes.forEach(codeData => {
+                            const codeEntry = document.createElement('div');
+                            codeEntry.classList.add('code-entry');
+                            const statusClass = codeData.status === 'Digunakan' ? 'status-used' : 'status-unused';
+                            const prizeText = codeData.prize ? `Hadiah: <span class="prize-value">${codeData.prize}</span>` : 'Hadiah: Belum Diatur';
+                            const timestampText = codeData.timestamp ? ` | Digunakan: ${codeData.timestamp}` : '';
+
+                            codeEntry.innerHTML = `
+                                <div>
+                                    <strong>${codeData.code}</strong> (<span class="${statusClass}">${codeData.status}</span>)<br>
+                                    ${prizeText}${timestampText}
+                                </div>
+                                <button class="copy-link" data-code="${codeData.code}">Salin Link</button>
+                            `;
+                            allCodesList.appendChild(codeEntry);
+                        });
+                    } else {
+                        allCodesList.innerHTML = '<p style="text-align: center; color: #cccccc;">Tidak ada kode yang ditemukan.</p>';
+                    }
+                } else {
+                    allCodesList.innerHTML = `<p style="text-align: center; color: #ff4d4d;">Gagal memuat kode: ${result.message} ❌</p>`;
+                }
+            } catch (error) {
+                console.error('Error fetching all codes:', error);
+                allCodesList.innerHTML = '<p style="text-align: center; color: #ff4d4d;">Terjadi kesalahan saat memuat daftar kode. ⚠️</p>';
+            }
+        }
+
+        allCodesList.addEventListener('click', (event) => {
+            if (event.target.classList.contains('copy-link')) {
+                const codeToCopy = event.target.dataset.code;
+                const linkToCopy = `${window.location.origin}/index.html?code=${codeToCopy}`;
+                
+                navigator.clipboard.writeText(linkToCopy).then(() => {
+                    event.target.textContent = 'Disalin! ✅';
+                    setTimeout(() => {
+                        event.target.textContent = 'Salin Link';
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Gagal menyalin link:', err);
+                    alert('Gagal menyalin link. Silakan salin manual: ' + linkToCopy);
+                });
             }
         });
     </script>
