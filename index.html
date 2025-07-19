@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DashwarnStore</title>
+    <title>DashwarnStore - Undian Hadiah</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #1a1a1a;
+            background-color: #1a1a1a; /* Dominan Hitam */
             color: #ffffff;
             display: flex;
             flex-direction: column;
@@ -16,10 +16,10 @@
             min-height: 100vh;
             margin: 0;
             padding: 20px;
-            box-sizing: border-box;
+            box-sizing: border;
         }
         .container {
-            background-color: #333333;
+            background-color: #333333; /* Warna gelap untuk kontainer */
             padding: 40px;
             border-radius: 10px;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
@@ -28,7 +28,7 @@
             width: 100%;
         }
         h1 {
-            color: #9370DB;
+            color: #9370DB; /* Ungu */
             margin-bottom: 30px;
             font-size: 2.5em;
         }
@@ -51,7 +51,7 @@
             text-align: center;
         }
         .spin-button {
-            background-color: #9370DB;
+            background-color: #9370DB; /* Ungu */
             color: white;
             padding: 15px 30px;
             border: none;
@@ -62,19 +62,23 @@
             text-transform: uppercase;
             font-weight: bold;
         }
-        .spin-button:hover {
-            background-color: #7B68EE;
+        .spin-button:hover:not(:disabled) { /* Hanya hover jika tidak disabled */
+            background-color: #7B68EE; /* Ungu sedikit lebih gelap */
+        }
+        .spin-button:disabled { /* Gaya saat disabled */
+            background-color: #555555;
+            cursor: not-allowed;
         }
         .message {
             margin-top: 20px;
             font-size: 1.1em;
-            color: #ff4d4d;
+            color: #ff4d4d; /* Merah untuk pesan error */
         }
         .prize-display {
             margin-top: 20px;
             font-size: 1.4em;
             font-weight: bold;
-            color: #4CAF50;
+            color: #4CAF50; /* Hijau untuk hadiah */
         }
     </style>
 </head>
@@ -91,12 +95,13 @@
 
     <script>
         // Panggil Netlify Function, bukan Apps Script langsung
-        const API_ENDPOINT_URL = '/.netlify/functions/api-handler';
+        const API_ENDPOINT_URL = '/.netlify/functions/api-handler'; // Pastikan ini sesuai dengan nama file Netlify Function Anda
 
         // Data Hadiah dengan Probabilitas
         const prizes = [
-            { name: 'Tralalelo', probability: 42 },
-            { name: 'Udin Din Dun', probability: 40 },
+            { name: 'Girafa', probability: 34 },
+            { name: 'Tralalelo', probability: 30 },
+            { name: 'Udin Din Dun', probability: 20 },
             { name: 'Lavaca', probability: 15 },
             { name: 'Los tralalelitos', probability: 1 },
             { name: 'Las tralalelitas', probability: 0.7 },
@@ -116,8 +121,17 @@
 
             if (!code) {
                 messageDisplay.textContent = 'Silakan masukkan kode redeem.';
+                messageDisplay.style.color = '#ff4d4d'; // Merah
                 return;
             }
+
+            // --- Feedback Visual: Mulai Loading ---
+            spinButton.textContent = 'Memproses...'; // Ubah teks tombol
+            spinButton.disabled = true;             // Nonaktifkan tombol
+            messageDisplay.textContent = 'Mengecek kode redeem...'; // Pesan loading
+            messageDisplay.style.color = '#cccccc'; // Warna abu-abu untuk loading
+            redeemCodeInput.disabled = true; // Nonaktifkan input juga
+            // --- Akhir Feedback Visual ---
 
             const wonPrize = drawPrize();
 
@@ -136,22 +150,34 @@
 
                 const result = await response.json();
 
+                // --- Feedback Visual: Selesai Loading (akan dinonaktifkan/disembunyikan sesuai kondisi) ---
+                spinButton.textContent = 'Spin!'; // Setel ulang teks tombol (sementara)
+                spinButton.disabled = false;      // Aktifkan kembali tombol (sementara)
+                redeemCodeInput.disabled = false; // Aktifkan kembali input (sementara)
+                // --- Akhir Feedback Visual ---
+
+
                 if (result.success) {
-                    if (result.status === 'used_now') { // Kode berhasil digunakan
-                        redeemCodeInput.value = '';
-                        redeemCodeInput.placeholder = `Selamat! Anda mendapatkan: ${wonPrize.name}`;
-                        redeemCodeInput.setAttribute('disabled', 'true');
-                        prizeDisplay.textContent = `Selamat! Anda mendapatkan: ${wonPrize.name}`;
-                        spinButton.style.display = 'none';
+                    if (result.status === 'newly_used') { // Kode berhasil digunakan sekarang
+                        redeemCodeInput.value = ''; // Kosongkan input
+                        redeemCodeInput.placeholder = `Selamat! Anda mendapatkan: ${result.prize}`; // Tampilkan hadiah di placeholder
+                        redeemCodeInput.setAttribute('disabled', 'true'); // Nonaktifkan input secara permanen
+                        prizeDisplay.textContent = `Selamat! Anda mendapatkan: ${result.prize}`;
+                        spinButton.style.display = 'none'; // Sembunyikan tombol Spin
+                        messageDisplay.textContent = 'Kode berhasil digunakan!';
+                        messageDisplay.style.color = '#4CAF50'; // Hijau untuk pesan sukses
                     } else if (result.status === 'used') { // Kode sudah digunakan sebelumnya
                         redeemCodeInput.value = '';
                         redeemCodeInput.placeholder = `Kode ini sudah digunakan. Hadiah: ${result.prize}`;
                         messageDisplay.textContent = 'Kode redeem yang Anda pakai sudah digunakan.';
                         prizeDisplay.textContent = `Hadiah sebelumnya: ${result.prize}`;
-                        spinButton.style.display = 'none'; // Sembunyikan tombol jika sudah terpakai
+                        spinButton.style.display = 'none'; // Sembunyikan tombol
+                        redeemCodeInput.setAttribute('disabled', 'true'); // Nonaktifkan input
+                        messageDisplay.style.color = '#ff4d4d'; // Merah untuk pesan sudah terpakai
                     }
                 } else {
                     messageDisplay.textContent = result.message;
+                    messageDisplay.style.color = '#ff4d4d'; // Merah untuk pesan error
                     if (result.message === 'Kode redeem sudah digunakan.' && result.prize) {
                         prizeDisplay.textContent = `Hadiah sebelumnya: ${result.prize}`;
                     }
@@ -160,9 +186,16 @@
             } catch (error) {
                 console.error('Error:', error);
                 messageDisplay.textContent = 'Terjadi kesalahan saat memproses permintaan. Coba lagi.';
+                messageDisplay.style.color = '#ff4d4d'; // Merah untuk error
+                // --- Feedback Visual: Pastikan tombol dan input diaktifkan kembali jika ada error ---
+                spinButton.textContent = 'Spin!';
+                spinButton.disabled = false;
+                redeemCodeInput.disabled = false;
+                // --- Akhir Feedback Visual ---
             }
         });
 
+        // Fungsi untuk mengundi hadiah berdasarkan probabilitas
         function drawPrize() {
             let totalProbability = prizes.reduce((sum, prize) => sum + prize.probability, 0);
             let randomNumber = Math.random() * totalProbability;
@@ -174,9 +207,10 @@
                     return prize;
                 }
             }
-            return prizes[0]; // Fallback
+            return prizes[0]; // Fallback, seharusnya tidak tercapai jika probabilitas > 0
         }
 
+        // Fungsi untuk mengambil parameter dari URL
         function getUrlParameter(name) {
             name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
             var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
@@ -184,10 +218,14 @@
             return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
         };
 
+        // Otomatis masukkan kode jika ada di URL (misal dari halaman admin/pembuat kode)
         const codeFromUrl = getUrlParameter('code');
         if (codeFromUrl) {
             redeemCodeInput.value = codeFromUrl;
+            // Jika ada kode dari URL, secara opsional bisa langsung memicu spin
+            // Tetapi untuk kasus ini, biarkan pengguna menekan tombol Spin secara manual.
         }
+
     </script>
 </body>
 </html>
